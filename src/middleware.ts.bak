@@ -1,0 +1,28 @@
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+export function middleware(request: NextRequest) {
+  // CRITICAL: Allow YooMoney webhook routes to bypass ALL middleware logic
+  // YooMoney sends POST requests from their servers without any session/auth
+  if (request.nextUrl.pathname.startsWith("/api/payment/webhook")) {
+    console.log("[Middleware] Allowing webhook request:", request.nextUrl.pathname);
+    return NextResponse.next();
+  }
+
+  // Add any other middleware logic here in the future
+  // For now, just pass through all requests
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for:
+     * - api/payment/webhook (YooMoney webhooks - MUST be public)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    "/((?!api/payment/webhook|_next/static|_next/image|favicon.ico).*)",
+  ],
+};

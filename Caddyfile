@@ -1,0 +1,9 @@
+# Редирект с moonely.ru на www.moonely.ru (SEO canonical)
+moonely.ru {
+    redir https://www.moonely.ru{uri} permanent
+}
+
+# Основной сайт
+www.moonely.ru {
+    reverse_proxy app:3000
+}
