@@ -41,6 +41,8 @@ coverage/
 *.pem
 *.log
 *~
+*.swp
+*.swo
 
 # Optional lock files (uncomment if you want to ignore)
 # package-lock.json
