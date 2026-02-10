@@ -254,9 +254,6 @@ export default function TermsPage() {
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4 text-white">13. Реквизиты и контакты</h2>
             <p className="text-zinc-300 mb-4">
-              Индивидуальный предприниматель
-            </p>
-            <p className="text-zinc-300 mb-4">
               ИНН: 783800671814
             </p>
             <p className="text-zinc-300 mb-4">
