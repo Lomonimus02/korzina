@@ -2,79 +2,172 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
 import { NextResponse } from "next/server";
+import {
+  YooKassaCreatePaymentRequest,
+  YooKassaPayment,
+  YOOKASSA_PLANS,
+  formatAmountForYooKassa,
+  generateIdempotenceKey,
+  createYooKassaAuthHeader,
+} from "@/lib/yookassa-types";
 
-// YooMoney Wallet Number
-const YOOMONEY_RECEIVER = "4100119006815874";
-
-// Plan Configurations
-const PLANS = {
-  STARTER: {
-    amount: 890.00,
-    credits: 25,
-    name: "Стартовый",
-  },
-  ADVANCED: {
-    amount: 2990.00,
-    credits: 100,
-    name: "Продвинутый",
-  },
-};
+// ЮКасса API URL
+const YOOKASSA_API_URL = "https://api.yookassa.ru/v3/payments";
 
 export async function POST(req: Request) {
-  console.log("💳 [Payment Create] Request received");
+  console.log("💳 [Payment Create] Запрос получен");
 
   try {
-    // 1. Auth Check
+    // 1. Проверка авторизации
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      console.log("❌ [Payment Create] Unauthorized - no session");
+      console.log("❌ [Payment Create] Не авторизован - нет сессии");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const userId = (session.user as any).id;
-    console.log("✅ [Payment Create] User authenticated:", userId);
+    const userEmail = session.user.email;
+    console.log("✅ [Payment Create] Пользователь авторизован:", userId);
 
-    // 2. Parse Request
+    // 2. Парсинг запроса
     const body = await req.json();
     const { plan } = body;
 
-    const planConfig = PLANS[plan as keyof typeof PLANS];
+    // Валидация плана
+    const planConfig = YOOKASSA_PLANS[plan as keyof typeof YOOKASSA_PLANS];
     if (!planConfig) {
-      console.log("❌ [Payment Create] Invalid plan:", plan);
+      console.log("❌ [Payment Create] Неверный план:", plan);
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
     }
 
-    // 3. Create PENDING Transaction
-    const transaction = await prisma.transaction.create({
+    // 3. Проверка наличия переменных окружения
+    const shopId = process.env.YOOKASSA_SHOP_ID;
+    const secretKey = process.env.YOOKASSA_SECRET_KEY;
+    
+    if (!shopId || !secretKey) {
+      console.error("❌ [Payment Create] Отсутствуют YOOKASSA_SHOP_ID или YOOKASSA_SECRET_KEY");
+      return NextResponse.json(
+        { error: "Payment system not configured" },
+        { status: 500 }
+      );
+    }
+
+    // 4. Создание записи платежа в БД со статусом PENDING
+    const payment = await prisma.payment.create({
       data: {
         userId: userId,
         amount: planConfig.amount,
+        currency: "RUB",
         status: "PENDING",
+        plan: plan as any,
+        description: planConfig.description,
       },
     });
-    console.log("✅ [Payment Create] Transaction created:", transaction.id);
+    console.log("✅ [Payment Create] Платёж создан в БД:", payment.id);
 
-    // 4. Build YooMoney QuickPay URL
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+    // 5. Формирование URL возврата
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
+    const returnUrl = `${baseUrl}/payment/success?paymentId=${payment.id}`;
+
+    // 6. Подготовка запроса к ЮКасса API
+    const yookassaRequest: YooKassaCreatePaymentRequest = {
+      amount: formatAmountForYooKassa(planConfig.amount),
+      capture: true, // Одностадийный платёж (сразу списываем)
+      confirmation: {
+        type: "redirect",
+        return_url: returnUrl,
+      },
+      description: planConfig.description,
+      metadata: {
+        userId: userId,
+        internalPaymentId: payment.id,
+        plan: plan,
+      },
+      // Чек для 54-ФЗ (если нужен)
+      receipt: userEmail ? {
+        customer: {
+          email: userEmail,
+        },
+        items: [
+          {
+            description: planConfig.description,
+            quantity: "1",
+            amount: formatAmountForYooKassa(planConfig.amount),
+            vat_code: 1, // Без НДС (для упрощённой системы налогообложения)
+            payment_subject: "service",
+            payment_mode: "full_payment",
+          },
+        ],
+      } : undefined,
+    };
+
+    // 7. Отправка запроса к ЮКасса
+    console.log("📤 [Payment Create] Отправка запроса к ЮКасса API...");
     
-    const yooMoneyUrl = new URL("https://yoomoney.ru/quickpay/confirm.xml");
-    yooMoneyUrl.searchParams.append("receiver", YOOMONEY_RECEIVER);
-    yooMoneyUrl.searchParams.append("quickpay-form", "shop");
-    yooMoneyUrl.searchParams.append("targets", `${planConfig.name} - ${planConfig.credits} Credits`);
-    yooMoneyUrl.searchParams.append("sum", planConfig.amount.toFixed(2));
-    yooMoneyUrl.searchParams.append("label", transaction.id); // CRITICAL: Transaction ID for webhook matching
-    yooMoneyUrl.searchParams.append("paymentType", "AC"); // Card payment
-    yooMoneyUrl.searchParams.append("successURL", `${baseUrl}/payment/success?orderId=${transaction.id}`);
+    const idempotenceKey = generateIdempotenceKey();
+    const authHeader = createYooKassaAuthHeader(shopId, secretKey);
 
-    console.log("✅ [Payment Create] YooMoney URL generated:", yooMoneyUrl.toString());
+    const yookassaResponse = await fetch(YOOKASSA_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": authHeader,
+        "Idempotence-Key": idempotenceKey,
+      },
+      body: JSON.stringify(yookassaRequest),
+    });
 
-    return NextResponse.json({ 
-      url: yooMoneyUrl.toString(),
-      transactionId: transaction.id 
+    // 8. Обработка ответа от ЮКасса
+    if (!yookassaResponse.ok) {
+      const errorData = await yookassaResponse.text();
+      console.error("❌ [Payment Create] Ошибка ЮКасса:", yookassaResponse.status, errorData);
+      
+      // Удаляем созданный платёж при ошибке
+      await prisma.payment.delete({ where: { id: payment.id } });
+      
+      return NextResponse.json(
+        { error: "Failed to create payment" },
+        { status: 500 }
+      );
+    }
+
+    const yookassaPayment: YooKassaPayment = await yookassaResponse.json();
+    console.log("✅ [Payment Create] Платёж создан в ЮКасса:", yookassaPayment.id);
+
+    // 9. Обновление записи платежа с ID от ЮКасса
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        yookassaId: yookassaPayment.id,
+      },
+    });
+
+    // 10. Получение URL для редиректа
+    const confirmationUrl = yookassaPayment.confirmation?.confirmation_url;
+    
+    if (!confirmationUrl) {
+      console.error("❌ [Payment Create] Нет confirmation_url в ответе");
+      return NextResponse.json(
+        { error: "No confirmation URL received" },
+        { status: 500 }
+      );
+    }
+
+    console.log("✅ [Payment Create] URL для оплаты:", confirmationUrl);
+
+    // 11. Возврат URL на фронтенд
+    return NextResponse.json({
+      url: confirmationUrl,
+      paymentId: payment.id,
+      yookassaId: yookassaPayment.id,
     });
 
   } catch (error) {
-    console.error("❌ [Payment Create] Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    console.error("❌ [Payment Create] Ошибка:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }
+

@@ -30,6 +30,7 @@ model User {
   deployments   Deployment[]
   assets        Asset[]   // Moonely Cloud assets
   accounts      Account[] // OAuth аккаунты (Google, GitHub и т.д.)
+  payments      Payment[] // Платежи через ЮКасса
 }
 
 // OAuth аккаунты для NextAuth.js (Google, GitHub, Yandex и т.д.)
@@ -196,4 +197,30 @@ model News {
   published Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Платежи через ЮКасса API v3
+model Payment {
+  id          String        @id @default(uuid())      // Внутренний ID платежа
+  yookassaId  String?       @unique                   // ID платежа в системе ЮКасса
+  amount      Float                                   // Сумма платежа
+  currency    String        @default("RUB")           // Валюта (по умолчанию RUB)
+  status      PaymentStatus @default(PENDING)         // Статус платежа
+  plan        Plan?                                   // Тарифный план
+  description String?                                 // Описание платежа
+  userId      String                                  // ID пользователя
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([yookassaId])
+}
+
+// Статусы платежей ЮКасса
+enum PaymentStatus {
+  PENDING       // Ожидает оплаты
+  WAITING_FOR_CAPTURE // Ожидает подтверждения (для двухстадийных платежей)
+  SUCCEEDED     // Успешно оплачен
+  CANCELED      // Отменён
 }

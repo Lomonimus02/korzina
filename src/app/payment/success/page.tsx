@@ -8,20 +8,21 @@ import Link from "next/link";
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
-  const orderId = searchParams.get("orderId");
+  // Поддержка обоих параметров: paymentId (новый ЮКасса) и orderId (старый)
+  const paymentId = searchParams.get("paymentId") || searchParams.get("orderId");
   
   const [status, setStatus] = useState<"loading" | "success" | "pending" | "error">("loading");
   const [checkCount, setCheckCount] = useState(0);
 
   useEffect(() => {
-    if (!orderId) {
+    if (!paymentId) {
       setStatus("error");
       return;
     }
 
     const checkStatus = async () => {
       try {
-        const res = await fetch(`/api/payment/check?orderId=${orderId}`);
+        const res = await fetch(`/api/payment/check?paymentId=${paymentId}`);
         if (res.ok) {
           const data = await res.json();
           if (data.status === "PAID") {
@@ -57,7 +58,7 @@ function PaymentSuccessContent() {
 
       return () => clearInterval(interval);
     });
-  }, [orderId]);
+  }, [paymentId]);
 
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 text-center">
@@ -65,7 +66,7 @@ function PaymentSuccessContent() {
         <div className="space-y-4">
           <Loader2 className="h-12 w-12 animate-spin text-purple-500 mx-auto" />
           <h1 className="text-2xl font-bold text-white">Проверяем оплату...</h1>
-          <p className="text-zinc-400">Ожидаем подтверждение от YooMoney ({checkCount}/10)</p>
+          <p className="text-zinc-400">Ожидаем подтверждение от ЮКассы ({checkCount}/10)</p>
         </div>
       )}
 
@@ -85,12 +86,12 @@ function PaymentSuccessContent() {
           <Clock className="h-16 w-16 text-yellow-500 mx-auto" />
           <h1 className="text-2xl font-bold text-white">Обработка платежа</h1>
           <p className="text-zinc-400 max-w-md">
-            Мы еще не получили подтверждение от YooMoney. 
+            Мы еще не получили подтверждение от ЮКассы. 
             Это может занять до 5 минут.
           </p>
           <div className="bg-zinc-900 rounded-lg p-4 mt-4 text-left max-w-md">
             <p className="text-sm text-zinc-300 mb-2">
-              <strong>ID транзакции:</strong> {orderId}
+              <strong>ID платежа:</strong> {paymentId}
             </p>
             <p className="text-xs text-zinc-500">
               Если деньги списались, но кредиты не появились в течение 10 минут, 
