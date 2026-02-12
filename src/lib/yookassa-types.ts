@@ -175,7 +175,7 @@ export interface PlanConfig {
  */
 export const YOOKASSA_PLANS: Record<string, PlanConfig> = {
   STARTER: {
-    amount: 890,
+    amount: 50,
     credits: 25,
     name: "Стартовый",
     description: "Подписка Moonely - Стартовый (25 генераций)",

@@ -62,7 +62,7 @@ export function PricingClient({ currentPlan, isAuthenticated }: PricingClientPro
     {
       id: "starter",
       name: "Стартовый",
-      price: "890₽",
+      price: "50₽",
       period: "/месяц",
       description: "Для начинающих разработчиков.",
       features: ["25 генераций в месяц", "Быстрая скорость", "Приоритетная поддержка"],

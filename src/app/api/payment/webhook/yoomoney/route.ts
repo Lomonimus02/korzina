@@ -9,7 +9,7 @@ function getCreditsForAmount(amount: number): number {
   
   if (roundedAmount >= 2990) {
     return 100; // Продвинутый
-  } else if (roundedAmount >= 890) {
+  } else if (roundedAmount >= 50) {
     return 25;  // Стартовый
   }
   return 0;
@@ -190,7 +190,7 @@ export async function POST(req: Request) {
     
     if (paidAmount >= 2990) {
       newPlan = "ADVANCED";
-    } else if (paidAmount >= 890) {
+    } else if (paidAmount >= 50) {
       newPlan = "STARTER";
     }
 

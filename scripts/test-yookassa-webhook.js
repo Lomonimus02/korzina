@@ -32,7 +32,7 @@ async function testWebhook() {
       id: 'test-yookassa-id-' + Date.now(), // ID от ЮКасса (симуляция)
       status: 'succeeded',
       amount: {
-        value: '890.00',
+        value: '50.00',
         currency: 'RUB'
       },
       description: 'Подписка Moonely - Стартовый (25 генераций)',

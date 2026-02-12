@@ -103,7 +103,7 @@ export async function POST(req: Request) {
         const amount = parseFloat(paymentObject.amount.value);
         if (amount >= 2990) {
           creditsToAdd = 100; // ADVANCED
-        } else if (amount >= 890) {
+        } else if (amount >= 50) {
           creditsToAdd = 25; // STARTER
         }
       }
