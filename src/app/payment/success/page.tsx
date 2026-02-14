@@ -72,8 +72,11 @@ function PaymentSuccessContent() {
 
       {status === "success" && (
         <div className="space-y-4 animate-in fade-in zoom-in duration-500 relative">
-          {/* Green glow effect */}
-          <div className="absolute inset-0 -z-10 blur-3xl opacity-30 bg-gradient-to-r from-green-500/40 via-emerald-500/30 to-green-500/40 rounded-full scale-150 animate-pulse" />
+          {/* Green glow effect - permanent */}
+          <div 
+            className="absolute inset-0 -z-10 blur-3xl opacity-30 bg-gradient-to-r from-green-500/40 via-emerald-500/30 to-green-500/40 rounded-full scale-150"
+            style={{ animation: 'pulse 3s ease-in-out infinite' }}
+          />
           <div className="absolute inset-0 -z-10 blur-2xl opacity-20 bg-green-500/30 rounded-full scale-125" />
           
           <CheckCircle className="h-16 w-16 text-green-500 mx-auto drop-shadow-[0_0_15px_rgba(34,197,94,0.5)]" />
@@ -82,6 +85,13 @@ function PaymentSuccessContent() {
           <Button asChild className="mt-4 bg-white text-black hover:bg-zinc-200">
             <Link href="/new">Начать создавать</Link>
           </Button>
+          
+          <style jsx>{`
+            @keyframes pulse {
+              0%, 100% { opacity: 0.3; transform: scale(1.5); }
+              50% { opacity: 0.5; transform: scale(1.6); }
+            }
+          `}</style>
         </div>
       )}
 
