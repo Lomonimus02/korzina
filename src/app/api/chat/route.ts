@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { generateRepoMap } from "@/lib/repo-map";
+import { FREE_PLAN_LIMITS } from "@/lib/yookassa-types";
 
 export const maxDuration = 60;
 
@@ -27,8 +28,58 @@ export async function POST(req: Request) {
     return new Response("User not found", { status: 401 });
   }
 
-  if (user.credits <= 0) {
-    return Response.json({ error: "Insufficient credits" }, { status: 403 });
+  // ============================================
+  // FREE plan limits check (3/day, 15/month)
+  // ============================================
+  const now = new Date();
+  let updatedUserData = {
+    dailyGenerations: user.dailyGenerations,
+    monthlyGenerations: user.monthlyGenerations,
+    dailyResetAt: user.dailyResetAt,
+    monthlyResetAt: user.monthlyResetAt,
+  };
+
+  // Reset daily counter if needed
+  if (!user.dailyResetAt || now >= user.dailyResetAt) {
+    const tomorrowMidnight = new Date(now);
+    tomorrowMidnight.setDate(tomorrowMidnight.getDate() + 1);
+    tomorrowMidnight.setHours(0, 0, 0, 0);
+    
+    updatedUserData.dailyGenerations = 0;
+    updatedUserData.dailyResetAt = tomorrowMidnight;
+  }
+
+  // Reset monthly counter if needed
+  if (!user.monthlyResetAt || now >= user.monthlyResetAt) {
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
+    
+    updatedUserData.monthlyGenerations = 0;
+    updatedUserData.monthlyResetAt = nextMonthStart;
+  }
+
+  // For FREE plan users - check limits
+  if (user.plan === 'FREE') {
+    // Check daily limit
+    if (updatedUserData.dailyGenerations >= FREE_PLAN_LIMITS.dailyGenerations) {
+      return Response.json({ 
+        error: "Дневной лимит исчерпан", 
+        message: `Бесплатный план: ${FREE_PLAN_LIMITS.dailyGenerations} генерации в день. Обновите тариф для безлимитного доступа.`
+      }, { status: 403 });
+    }
+    
+    // Check monthly limit
+    if (updatedUserData.monthlyGenerations >= FREE_PLAN_LIMITS.monthlyGenerations) {
+      return Response.json({ 
+        error: "Месячный лимит исчерпан", 
+        message: `Бесплатный план: ${FREE_PLAN_LIMITS.monthlyGenerations} генераций в месяц. Обновите тариф для безлимитного доступа.`
+      }, { status: 403 });
+    }
+  } else {
+    // For paid plans - check credits (regular credits or lifetime credits)
+    const totalCredits = (user.credits || 0) + (user.lifetimeCredits || 0);
+    if (totalCredits <= 0) {
+      return Response.json({ error: "Insufficient credits" }, { status: 403 });
+    }
   }
 
   const { messages, currentFiles, chatId, images, attachments } = await req.json();
@@ -874,18 +925,58 @@ ${filesContext}
       throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
     }
 
-    // Deduct credit after successful start using atomic operation with race condition protection
-    const updatedUser = await prisma.user.updateMany({
-      where: { 
-        id: user.id,
-        credits: { gt: 0 } // Only deduct if credits > 0 (prevents race condition)
-      },
-      data: { credits: { decrement: 1 } },
-    });
+    // Deduct credit/increment generation counter after successful start
+    if (user.plan === 'FREE') {
+      // For FREE plan - increment daily and monthly generation counters
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          dailyGenerations: { increment: 1 },
+          monthlyGenerations: { increment: 1 },
+          dailyResetAt: updatedUserData.dailyResetAt,
+          monthlyResetAt: updatedUserData.monthlyResetAt,
+        },
+      });
+    } else {
+      // For paid plans - deduct credits (priority: lifetime credits first, then regular credits)
+      if ((user.lifetimeCredits || 0) > 0) {
+        // Use lifetime credits first
+        const updatedUser = await prisma.user.updateMany({
+          where: { 
+            id: user.id,
+            lifetimeCredits: { gt: 0 }
+          },
+          data: { lifetimeCredits: { decrement: 1 } },
+        });
+        
+        if (updatedUser.count === 0) {
+          // Fall back to regular credits
+          const fallbackUpdate = await prisma.user.updateMany({
+            where: { 
+              id: user.id,
+              credits: { gt: 0 }
+            },
+            data: { credits: { decrement: 1 } },
+          });
+          
+          if (fallbackUpdate.count === 0) {
+            return Response.json({ error: "Insufficient credits" }, { status: 403 });
+          }
+        }
+      } else {
+        // Use regular credits
+        const updatedUser = await prisma.user.updateMany({
+          where: { 
+            id: user.id,
+            credits: { gt: 0 }
+          },
+          data: { credits: { decrement: 1 } },
+        });
 
-    // If no rows updated, user ran out of credits during request
-    if (updatedUser.count === 0) {
-      return Response.json({ error: "Insufficient credits" }, { status: 403 });
+        if (updatedUser.count === 0) {
+          return Response.json({ error: "Insufficient credits" }, { status: 403 });
+        }
+      }
     }
 
     // Create a streaming response

@@ -238,7 +238,7 @@ interface ChatInterfaceProps {
   initialTitle?: string;
   userData?: {
     email: string;
-    plan: "FREE" | "STARTER" | "ADVANCED" | "STUDIO";
+    plan: "FREE" | "STARTER" | "CREATOR" | "PRO" | "STUDIO" | "AGENCY";
     role?: "USER" | "ADMIN";
   };
 }
@@ -1249,6 +1249,7 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                 onError={handleCodeError}
                 onRequestFix={handleRequestFix}
                 hasError={hasCodeError}
+                canExport={userData?.plan !== 'FREE'}
               />
            </div>
         </div>
@@ -1673,6 +1674,7 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                onError={handleCodeError}
                onRequestFix={handleRequestFix}
                hasError={hasCodeError}
+               canExport={userData?.plan !== 'FREE'}
              />
           </div>
         </ResizablePanel>

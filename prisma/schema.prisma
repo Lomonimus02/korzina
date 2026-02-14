@@ -16,7 +16,8 @@ model User {
   id            String    @id @default(uuid()) // UUID безопаснее цифр
   email         String    @unique
   password      String?   // Хеш пароля (опционально для OAuth пользователей)
-  credits       Int       @default(10)
+  credits       Int       @default(0)          // Кредиты от подписки (обнуляются в конце периода если не продлено)
+  lifetimeCredits Int     @default(0)          // Вечные кредиты (Копилка, Докупка) - никогда не сгорают
   plan          Plan      @default(FREE)
   role          Role      @default(USER) // Admin role for showcase publishing
   isVerified    Boolean   @default(false)
@@ -25,6 +26,17 @@ model User {
   name          String?   // Имя пользователя (для OAuth)
   vercelToken   String?   // Зашифрованный токен Vercel для деплоя
   createdAt     DateTime  @default(now())
+  
+  // Лимиты для бесплатного плана
+  dailyGenerations   Int       @default(0)      // Использовано генераций сегодня
+  dailyResetAt       DateTime  @default(now())  // Когда сбрасывать дневной счётчик
+  monthlyGenerations Int       @default(0)      // Использовано генераций в этом месяце
+  monthlyResetAt     DateTime  @default(now())  // Когда сбрасывать месячный счётчик
+  
+  // Подписка
+  subscriptionStartAt DateTime? // Начало текущего периода подписки
+  subscriptionEndAt   DateTime? // Конец текущего периода подписки (30 дней)
+  
   chats         Chat[]
   transactions  Transaction[]
   deployments   Deployment[]
@@ -73,10 +85,12 @@ model PasswordResetToken {
 }
 
 enum Plan {
-  FREE
-  STARTER
-  ADVANCED
-  STUDIO
+  FREE      // Бесплатный старт: 3 генерации/день, 15/месяц, без ZIP
+  STARTER   // Старт: 390₽, 40 кредитов
+  CREATOR   // Создатель: 990₽, 150 кредитов (хит продаж)
+  PRO       // Про: 1490₽, 300 кредитов
+  STUDIO    // Студия: 2490₽, 600 кредитов
+  AGENCY    // Агентство: 5990₽, 1500 кредитов
 }
 
 model Transaction {
@@ -199,19 +213,28 @@ model News {
   updatedAt DateTime @updatedAt
 }
 
+// Тип покупки
+enum PurchaseType {
+  SUBSCRIPTION    // Подписка (30 дней, кредиты обновляются)
+  LIFETIME_PACK   // Пакет "Копилка" (вечные кредиты)
+  TOPUP_PACK      // Пакет "Докупка" (вечные кредиты)
+}
+
 // Платежи через ЮКасса API v3
 model Payment {
-  id          String        @id @default(uuid())      // Внутренний ID платежа
-  yookassaId  String?       @unique                   // ID платежа в системе ЮКасса
-  amount      Float                                   // Сумма платежа
-  currency    String        @default("RUB")           // Валюта (по умолчанию RUB)
-  status      PaymentStatus @default(PENDING)         // Статус платежа
-  plan        Plan?                                   // Тарифный план
-  description String?                                 // Описание платежа
-  userId      String                                  // ID пользователя
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id           String        @id @default(uuid())      // Внутренний ID платежа
+  yookassaId   String?       @unique                   // ID платежа в системе ЮКасса
+  amount       Float                                   // Сумма платежа
+  currency     String        @default("RUB")           // Валюта (по умолчанию RUB)
+  status       PaymentStatus @default(PENDING)         // Статус платежа
+  plan         Plan?                                   // Тарифный план (для подписок)
+  purchaseType PurchaseType  @default(SUBSCRIPTION)    // Тип покупки
+  creditsAmount Int?                                   // Количество кредитов (для пакетов)
+  description  String?                                 // Описание платежа
+  userId       String                                  // ID пользователя
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   @@index([userId])
   @@index([yookassaId])

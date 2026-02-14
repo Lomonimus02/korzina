@@ -1,16 +1,22 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Lock } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 
 interface DownloadButtonProps {
   files: Record<string, string>;
+  canExport?: boolean; // false для FREE плана
 }
 
-export function DownloadButton({ files }: DownloadButtonProps) {
+export function DownloadButton({ files, canExport = true }: DownloadButtonProps) {
   const handleDownload = async () => {
+    if (!canExport) {
+      return;
+    }
+    
     const zip = new JSZip();
 
     // Add files to zip
@@ -20,14 +26,32 @@ export function DownloadButton({ files }: DownloadButtonProps) {
       zip.file(fileName, content);
     });
 
-    // Add a basic index.html to run the app (optional, but good for preview)
-    // Since we are using Sandpack/React, a simple HTML might not work without build step.
-    // But we can at least provide the source code.
-    // Let's just save the source files.
-
     const content = await zip.generateAsync({ type: "blob" });
     saveAs(content, "project-export.zip");
   };
+
+  if (!canExport) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              disabled
+              title="Экспорт недоступен"
+              className="h-7 w-7 text-zinc-600 cursor-not-allowed"
+            >
+              <Lock size={14} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="bg-zinc-900 border-zinc-800 text-zinc-300">
+            <p>Экспорт в ZIP доступен на платных тарифах</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
 
   return (
     <Button 

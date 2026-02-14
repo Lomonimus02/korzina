@@ -12,7 +12,7 @@ import { LogOut, User, ChevronUp } from "lucide-react";
 
 interface UserProfileProps {
   email: string;
-  plan: "FREE" | "STARTER" | "ADVANCED" | "STUDIO";
+  plan: "FREE" | "STARTER" | "CREATOR" | "PRO" | "STUDIO" | "AGENCY";
   isCollapsed?: boolean;
   side?: "top" | "bottom" | "left" | "right";
 }
@@ -43,7 +43,7 @@ export function UserProfile({ email, plan, isCollapsed, side = "top" }: UserProf
         {plan !== "FREE" && (
           <div className="px-2 py-1.5 mb-1 border-b border-white/5">
             <span className="text-xs font-medium text-zinc-400">
-              {plan === "STARTER" ? "Стартовый" : plan === "ADVANCED" ? "Продвинутый" : plan === "STUDIO" ? "Студия" : plan}
+              {plan === "STARTER" ? "Старт" : plan === "CREATOR" ? "Создатель" : plan === "PRO" ? "Про" : plan === "STUDIO" ? "Студия" : plan === "AGENCY" ? "Агентство" : plan}
             </span>
           </div>
         )}

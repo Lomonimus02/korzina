@@ -161,31 +161,114 @@ export type YooKassaWebhookEventType =
 // ============================================
 
 /**
+ * Тип покупки
+ */
+export type PurchaseType = 'SUBSCRIPTION' | 'LIFETIME_PACK' | 'TOPUP_PACK';
+
+/**
  * Конфигурация тарифных планов
  */
 export interface PlanConfig {
-  amount: number;   // Цена в рублях
-  credits: number;  // Количество кредитов
-  name: string;     // Название плана
-  description: string; // Описание для чека
+  amount: number;       // Цена в рублях
+  credits: number;      // Количество кредитов
+  name: string;         // Название плана
+  description: string;  // Описание для чека
+  purchaseType: PurchaseType; // Тип покупки
+  features?: string[];  // Особенности плана
+  badge?: string;       // Бейдж (хит продаж, выгодно и т.д.)
+  hasCommunityAccess?: boolean; // Доступ к закрытому чату
+  speedPriority?: 'standard' | 'fast' | 'max'; // Приоритет скорости
 }
 
 /**
- * Карта тарифов
+ * Карта подписок - действуют 30 дней с rollover
  */
 export const YOOKASSA_PLANS: Record<string, PlanConfig> = {
   STARTER: {
-    amount: 50,
-    credits: 25,
-    name: "Стартовый",
-    description: "Подписка Moonely - Стартовый (25 генераций)",
+    amount: 390,
+    credits: 40,
+    name: "Старт",
+    description: "Подписка Moonely - Старт (40 генераций, 30 дней)",
+    purchaseType: 'SUBSCRIPTION',
+    speedPriority: 'fast',
   },
-  ADVANCED: {
-    amount: 2990,
+  CREATOR: {
+    amount: 990,
+    credits: 150,
+    name: "Создатель",
+    description: "Подписка Moonely - Создатель (150 генераций, 30 дней)",
+    purchaseType: 'SUBSCRIPTION',
+    badge: "хит продаж",
+    hasCommunityAccess: true,
+    speedPriority: 'fast',
+  },
+  PRO: {
+    amount: 1490,
+    credits: 300,
+    name: "Про",
+    description: "Подписка Moonely - Про (300 генераций, 30 дней)",
+    purchaseType: 'SUBSCRIPTION',
+    badge: "выгодно",
+    hasCommunityAccess: true,
+    speedPriority: 'fast',
+  },
+  STUDIO: {
+    amount: 2490,
+    credits: 600,
+    name: "Студия",
+    description: "Подписка Moonely - Студия (600 генераций, 30 дней)",
+    purchaseType: 'SUBSCRIPTION',
+    hasCommunityAccess: true,
+    speedPriority: 'max',
+  },
+  AGENCY: {
+    amount: 5990,
+    credits: 1500,
+    name: "Агентство",
+    description: "Подписка Moonely - Агентство (1500 генераций, 30 дней)",
+    purchaseType: 'SUBSCRIPTION',
+    hasCommunityAccess: true,
+    speedPriority: 'max',
+  },
+};
+
+/**
+ * Пакеты без обязательств (Lifetime / One-time)
+ * Кредиты не сгорают никогда. Оплата один раз.
+ */
+export const YOOKASSA_PACKS: Record<string, PlanConfig> = {
+  LIFETIME_PACK: {
+    amount: 1290,
     credits: 100,
-    name: "Продвинутый",
-    description: "Подписка Moonely - Продвинутый (100 генераций)",
+    name: "Копилка",
+    description: "Пакет Moonely - Копилка (100 вечных кредитов)",
+    purchaseType: 'LIFETIME_PACK',
+    features: [
+      "Кредиты не сгорают никогда",
+      "Доступ ко всем Pro-функциям",
+    ],
   },
+  TOPUP_PACK: {
+    amount: 290,
+    credits: 25,
+    name: "Докупка",
+    description: "Пакет Moonely - Докупка (25 вечных кредитов)",
+    purchaseType: 'TOPUP_PACK',
+    features: [
+      "Кредиты не сгорают никогда",
+      "Доступен всем пользователям",
+    ],
+  },
+};
+
+/**
+ * Лимиты для бесплатного плана
+ */
+export const FREE_PLAN_LIMITS = {
+  dailyGenerations: 3,    // Генераций в день
+  monthlyGenerations: 15, // Генераций в месяц
+  canExportZip: false,    // Экспорт в ZIP недоступен
+  speedPriority: 'standard' as const,
 };
 
 // ============================================

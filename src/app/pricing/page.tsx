@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 export default async function PricingPage() {
   const session = await getAuthSession();
 
-  let currentPlan: "FREE" | "STARTER" | "ADVANCED" | "STUDIO" = "FREE";
+  let currentPlan: "FREE" | "STARTER" | "CREATOR" | "PRO" | "STUDIO" | "AGENCY" = "FREE";
   let isAuthenticated = false;
 
   if (session?.user?.email) {
@@ -25,15 +25,17 @@ export default async function PricingPage() {
     });
 
     if (user) {
-      currentPlan = user.plan as "FREE" | "STARTER" | "ADVANCED" | "STUDIO";
+      currentPlan = user.plan as "FREE" | "STARTER" | "CREATOR" | "PRO" | "STUDIO" | "AGENCY";
       isAuthenticated = true;
     }
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-black text-white relative">
+      {/* Gradient Background - covers entire page including footer */}
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-[1400px] h-[800px] bg-gradient-to-t from-orange-500/30 via-purple-500/15 to-transparent opacity-60 blur-[120px] rounded-full pointer-events-none z-0" />
       <PricingClient currentPlan={currentPlan} isAuthenticated={isAuthenticated} />
-      <Footer />
+      <Footer className="relative z-10" />
     </div>
   );
 }

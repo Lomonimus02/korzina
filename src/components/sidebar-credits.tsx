@@ -1,19 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Zap } from "lucide-react";
+import { Zap, Infinity } from "lucide-react";
 import Link from "next/link";
 
 interface SidebarCreditsProps {
   initialCredits: number;
+  initialLifetimeCredits?: number;
+  initialPlan?: string;
 }
 
-export function SidebarCredits({ initialCredits }: SidebarCreditsProps) {
-  const [credits, setCredits] = useState(initialCredits);
+export function SidebarCredits({ 
+  initialCredits, 
+  initialLifetimeCredits = 0,
+  initialPlan = 'FREE' 
+}: SidebarCreditsProps) {
+  const [regularCredits, setRegularCredits] = useState(initialCredits);
+  const [lifetimeCredits, setLifetimeCredits] = useState(initialLifetimeCredits);
+  const [plan, setPlan] = useState(initialPlan);
 
   useEffect(() => {
-    setCredits(initialCredits);
-  }, [initialCredits]);
+    setRegularCredits(initialCredits);
+    setLifetimeCredits(initialLifetimeCredits);
+    setPlan(initialPlan);
+  }, [initialCredits, initialLifetimeCredits, initialPlan]);
 
   useEffect(() => {
     const handleRefresh = async () => {
@@ -21,7 +31,9 @@ export function SidebarCredits({ initialCredits }: SidebarCreditsProps) {
         const res = await fetch("/api/credits");
         if (res.ok) {
           const data = await res.json();
-          setCredits(data.credits);
+          setRegularCredits(data.regularCredits || 0);
+          setLifetimeCredits(data.lifetimeCredits || 0);
+          setPlan(data.plan || 'FREE');
         }
       } catch (error) {
         console.error("Failed to refresh credits:", error);
@@ -38,15 +50,26 @@ export function SidebarCredits({ initialCredits }: SidebarCreditsProps) {
     };
   }, []);
 
+  const totalCredits = regularCredits + lifetimeCredits;
+  const hasLifetimeCredits = lifetimeCredits > 0;
+
   return (
     <Link 
       href="/pricing"
       className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/15 transition-colors group"
     >
       <Zap size={16} className="text-amber-500" />
-      <span className="text-sm font-medium text-amber-200/90">
-        {credits} кредитов
-      </span>
+      <div className="flex flex-col">
+        <span className="text-sm font-medium text-amber-200/90">
+          {totalCredits} кредитов
+        </span>
+        {hasLifetimeCredits && (
+          <span className="text-xs text-amber-500/60 flex items-center gap-1">
+            <Infinity size={10} />
+            {lifetimeCredits} бессрочных
+          </span>
+        )}
+      </div>
       <span className="ml-auto text-xs text-amber-500/60 group-hover:text-amber-500/80 transition-colors">
         Пополнить
       </span>

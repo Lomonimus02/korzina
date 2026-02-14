@@ -4,6 +4,7 @@ import {
   YooKassaWebhookEvent,
   YooKassaPayment,
   YOOKASSA_PLANS,
+  YOOKASSA_PACKS,
 } from "@/lib/yookassa-types";
 
 /**
@@ -91,24 +92,34 @@ export async function POST(req: Request) {
         });
       }
 
-      // 5. Определяем количество кредитов на основе плана
+      // 5. Определяем тип покупки и количество кредитов
       const plan = payment.plan || metadata?.plan;
-      const planConfig = plan ? YOOKASSA_PLANS[plan as keyof typeof YOOKASSA_PLANS] : null;
+      const purchaseType = payment.purchaseType || metadata?.purchaseType || 'SUBSCRIPTION';
+      const user = payment.user;
       
       let creditsToAdd = 0;
-      if (planConfig) {
-        creditsToAdd = planConfig.credits;
+      let isLifetimeCredits = false;
+      
+      if (purchaseType === 'SUBSCRIPTION') {
+        // Для подписки - берем кредиты из конфига плана
+        const planConfig = plan ? YOOKASSA_PLANS[plan as keyof typeof YOOKASSA_PLANS] : null;
+        if (planConfig) {
+          creditsToAdd = planConfig.credits;
+        }
       } else {
-        // Fallback: определяем кредиты по сумме
-        const amount = parseFloat(paymentObject.amount.value);
-        if (amount >= 2990) {
-          creditsToAdd = 100; // ADVANCED
-        } else if (amount >= 50) {
-          creditsToAdd = 25; // STARTER
+        // Для пакетов - используем lifetimeCredits
+        const packConfig = YOOKASSA_PACKS[purchaseType as keyof typeof YOOKASSA_PACKS];
+        if (packConfig) {
+          creditsToAdd = packConfig.credits;
+          isLifetimeCredits = true;
+        } else if (payment.creditsAmount) {
+          // Fallback: из записи платежа
+          creditsToAdd = payment.creditsAmount;
+          isLifetimeCredits = true;
         }
       }
 
-      console.log("🎁 [YooKassa Webhook] Кредитов к начислению:", creditsToAdd);
+      console.log("🎁 [YooKassa Webhook] Кредитов к начислению:", creditsToAdd, "Тип:", purchaseType, "Lifetime:", isLifetimeCredits);
 
       // 6. Транзакционное обновление: статус платежа + кредиты пользователя
       await prisma.$transaction(async (tx) => {
@@ -117,22 +128,52 @@ export async function POST(req: Request) {
           where: { id: payment.id },
           data: {
             status: "SUCCEEDED",
-            yookassaId: yookassaId, // На случай если был найден по internalPaymentId
+            yookassaId: yookassaId,
           },
         });
 
-        // Начисляем кредиты пользователю
-        if (creditsToAdd > 0) {
+        if (purchaseType === 'SUBSCRIPTION' && creditsToAdd > 0) {
+          // === ЛОГИКА ПОДПИСКИ ===
+          const now = new Date();
+          let newCredits = creditsToAdd;
+          
+          // Rollover: если подписка еще активна, добавляем к существующим кредитам
+          if (user.subscriptionEndAt && user.subscriptionEndAt > now) {
+            const existingCredits = user.credits || 0;
+            newCredits = existingCredits + creditsToAdd;
+            console.log("🔄 [YooKassa Webhook] Rollover! Существующих кредитов:", existingCredits, "Новых:", creditsToAdd, "Итого:", newCredits);
+          }
+          
+          // Рассчитываем новый период подписки
+          const subscriptionStartAt = now;
+          const subscriptionEndAt = new Date(now);
+          subscriptionEndAt.setMonth(subscriptionEndAt.getMonth() + 1);
+          
           await tx.user.update({
             where: { id: payment.userId },
             data: {
-              credits: {
-                increment: creditsToAdd,
-              },
-              // Опционально: обновляем план пользователя
+              credits: newCredits,
               plan: plan ? (plan as any) : undefined,
+              subscriptionStartAt: subscriptionStartAt,
+              subscriptionEndAt: subscriptionEndAt,
             },
           });
+          
+          console.log("✅ [YooKassa Webhook] Подписка обновлена. План:", plan, "Кредиты:", newCredits, "Действует до:", subscriptionEndAt);
+          
+        } else if (isLifetimeCredits && creditsToAdd > 0) {
+          // === ЛОГИКА ПАКЕТОВ (вечные кредиты) ===
+          await tx.user.update({
+            where: { id: payment.userId },
+            data: {
+              lifetimeCredits: {
+                increment: creditsToAdd,
+              },
+              // Пакеты не меняют план пользователя
+            },
+          });
+          
+          console.log("✅ [YooKassa Webhook] Пакет активирован. Вечных кредитов добавлено:", creditsToAdd);
         }
 
         console.log("✅ [YooKassa Webhook] Обновлено: платёж", payment.id, ", пользователь", payment.userId);

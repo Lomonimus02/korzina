@@ -56,6 +56,7 @@ interface CodeViewerProps {
   onError?: (error: { message: string }) => void;
   onRequestFix?: (errorMessage: string) => void;
   hasError?: boolean;
+  canExport?: boolean; // false для FREE плана - блокирует экспорт ZIP
 }
 
 const sharedProps = {
@@ -145,14 +146,16 @@ function PreviewHeader({
   files,
   showPreviewOnly,
   chatId,
-  projectName
+  projectName,
+  canExport = true
 }: { 
   activeTab: "preview" | "code", 
   onTabChange: (tab: "preview" | "code") => void,
   files: Record<string, string>,
   showPreviewOnly?: boolean,
   chatId?: string,
-  projectName?: string
+  projectName?: string,
+  canExport?: boolean
 }) {
   const { dispatch } = useSandpack();
   const [url, setUrl] = useState("/");
@@ -249,7 +252,7 @@ function PreviewHeader({
           
           <div className="flex items-center gap-1">
             <DeployButton files={files} chatId={chatId} projectName={projectName} />
-            <DownloadButton files={files} />
+            <DownloadButton files={files} canExport={canExport} />
           </div>
        </div>
     </div>
@@ -751,7 +754,8 @@ export default function CodeViewer({
   onStreamFinish,
   onError,
   onRequestFix,
-  hasError = false
+  hasError = false,
+  canExport = true
 }: CodeViewerProps) {
   // DEBUG: Log files received
   useEffect(() => {
@@ -1588,6 +1592,7 @@ ${appFile}`;
                   showPreviewOnly={showPreviewOnly}
                   chatId={chatId}
                   projectName={projectName}
+                  canExport={canExport}
                 />
               )}
 
@@ -1650,6 +1655,7 @@ ${appFile}`;
                   showPreviewOnly={showPreviewOnly}
                   chatId={chatId}
                   projectName={projectName}
+                  canExport={canExport}
                 />
               )}
             </SandpackProvider>

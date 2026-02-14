@@ -6,6 +6,7 @@ import {
   YooKassaCreatePaymentRequest,
   YooKassaPayment,
   YOOKASSA_PLANS,
+  YOOKASSA_PACKS,
   formatAmountForYooKassa,
   generateIdempotenceKey,
   createYooKassaAuthHeader,
@@ -31,13 +32,48 @@ export async function POST(req: Request) {
 
     // 2. Парсинг запроса
     const body = await req.json();
-    const { plan } = body;
+    const { plan, purchaseType = 'SUBSCRIPTION' } = body;
 
-    // Валидация плана
-    const planConfig = YOOKASSA_PLANS[plan as keyof typeof YOOKASSA_PLANS];
+    // Определяем конфигурацию в зависимости от типа покупки
+    let planConfig: { amount: number; credits: number; description: string } | undefined;
+    let resolvedPlan: string | null = null;
+    let creditsAmount: number | null = null;
+
+    if (purchaseType === 'SUBSCRIPTION') {
+      // Для подписок - ищем в YOOKASSA_PLANS
+      planConfig = YOOKASSA_PLANS[plan as keyof typeof YOOKASSA_PLANS];
+      resolvedPlan = plan;
+      if (planConfig) {
+        creditsAmount = planConfig.credits;
+      }
+    } else {
+      // Для пакетов - ищем в YOOKASSA_PACKS
+      planConfig = YOOKASSA_PACKS[purchaseType as keyof typeof YOOKASSA_PACKS];
+      resolvedPlan = null; // Пакеты не меняют план пользователя
+      if (planConfig) {
+        creditsAmount = planConfig.credits;
+      }
+    }
+
     if (!planConfig) {
-      console.log("❌ [Payment Create] Неверный план:", plan);
-      return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
+      console.log("❌ [Payment Create] Неверный план или тип покупки:", plan, purchaseType);
+      return NextResponse.json({ error: "Invalid plan or purchase type" }, { status: 400 });
+    }
+
+    // 2.5 Проверка ограничений на покупку
+    // TOPUP_PACK доступен только пользователям с активной подпиской
+    if (purchaseType === 'TOPUP_PACK') {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { plan: true },
+      });
+      
+      if (!user || user.plan === 'FREE') {
+        console.log("❌ [Payment Create] TOPUP_PACK недоступен для FREE плана");
+        return NextResponse.json({ 
+          error: "TOPUP_PACK requires active subscription" 
+        }, { status: 403 });
+      }
     }
 
     // 3. Проверка наличия переменных окружения
@@ -59,11 +95,13 @@ export async function POST(req: Request) {
         amount: planConfig.amount,
         currency: "RUB",
         status: "PENDING",
-        plan: plan as any,
+        plan: resolvedPlan as any,
+        purchaseType: purchaseType as any,
+        creditsAmount: creditsAmount,
         description: planConfig.description,
       },
     });
-    console.log("✅ [Payment Create] Платёж создан в БД:", payment.id);
+    console.log("✅ [Payment Create] Платёж создан в БД:", payment.id, "Тип:", purchaseType);
 
     // 5. Формирование URL возврата
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
@@ -81,7 +119,8 @@ export async function POST(req: Request) {
       metadata: {
         userId: userId,
         internalPaymentId: payment.id,
-        plan: plan,
+        plan: resolvedPlan || '',
+        purchaseType: purchaseType,
       },
       // Чек для 54-ФЗ (если нужен)
       receipt: userEmail ? {

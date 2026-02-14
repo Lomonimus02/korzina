@@ -133,7 +133,13 @@ export function SidebarClient({ user }: SidebarClientProps) {
       
       {/* Footer - Minimal */}
       <div className={cn("p-3 mt-auto space-y-1", isCollapsed ? "items-center flex flex-col" : "")}>
-        {!isCollapsed && <SidebarCredits initialCredits={user.credits} />}
+        {!isCollapsed && (
+          <SidebarCredits 
+            initialCredits={user.credits} 
+            initialLifetimeCredits={user.lifetimeCredits || 0}
+            initialPlan={user.plan}
+          />
+        )}
         <UserProfile email={user.email} plan={user.plan} isCollapsed={isCollapsed} />
       </div>
       </div>

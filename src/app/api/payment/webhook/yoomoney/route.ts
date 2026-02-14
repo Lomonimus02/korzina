@@ -7,10 +7,12 @@ function getCreditsForAmount(amount: number): number {
   // Round to handle floating point issues
   const roundedAmount = Math.round(amount);
   
-  if (roundedAmount >= 2990) {
+  if (roundedAmount >= 3590) {
+    return 999999; // Pro (безлимит)
+  } else if (roundedAmount >= 1590) {
     return 100; // Продвинутый
-  } else if (roundedAmount >= 50) {
-    return 25;  // Стартовый
+  } else if (roundedAmount >= 490) {
+    return 50;  // Стартовый
   }
   return 0;
 }
@@ -185,12 +187,19 @@ export async function POST(req: Request) {
     // ═══════════════════════════════════════════════════════════
     // STEP 8: Determine Credits and Plan based on Amount
     // ═══════════════════════════════════════════════════════════
+    // NOTE: This is a legacy YooMoney webhook. New system uses ЮКасса (yookassa).
     const creditsToAdd = getCreditsForAmount(paidAmount);
-    let newPlan: "FREE" | "STARTER" | "ADVANCED" | "STUDIO" = "FREE";
+    let newPlan: "FREE" | "STARTER" | "CREATOR" | "PRO" | "STUDIO" | "AGENCY" = "FREE";
     
-    if (paidAmount >= 2990) {
-      newPlan = "ADVANCED";
-    } else if (paidAmount >= 50) {
+    if (paidAmount >= 5990) {
+      newPlan = "AGENCY";
+    } else if (paidAmount >= 2490) {
+      newPlan = "STUDIO";
+    } else if (paidAmount >= 1490) {
+      newPlan = "PRO";
+    } else if (paidAmount >= 990) {
+      newPlan = "CREATOR";
+    } else if (paidAmount >= 390) {
       newPlan = "STARTER";
     }
 
