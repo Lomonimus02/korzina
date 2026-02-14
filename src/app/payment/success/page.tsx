@@ -71,10 +71,14 @@ function PaymentSuccessContent() {
       )}
 
       {status === "success" && (
-        <div className="space-y-4 animate-in fade-in zoom-in duration-500">
-          <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
+        <div className="space-y-4 animate-in fade-in zoom-in duration-500 relative">
+          {/* Green glow effect */}
+          <div className="absolute inset-0 -z-10 blur-3xl opacity-30 bg-gradient-to-r from-green-500/40 via-emerald-500/30 to-green-500/40 rounded-full scale-150 animate-pulse" />
+          <div className="absolute inset-0 -z-10 blur-2xl opacity-20 bg-green-500/30 rounded-full scale-125" />
+          
+          <CheckCircle className="h-16 w-16 text-green-500 mx-auto drop-shadow-[0_0_15px_rgba(34,197,94,0.5)]" />
           <h1 className="text-3xl font-bold text-white">Оплата прошла успешно!</h1>
-          <p className="text-zinc-400">100 кредитов зачислены на ваш счет. Вы теперь PRO!</p>
+          <p className="text-zinc-400">Поздравляем с покупкой!</p>
           <Button asChild className="mt-4 bg-white text-black hover:bg-zinc-200">
             <Link href="/new">Начать создавать</Link>
           </Button>
