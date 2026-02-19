@@ -310,6 +310,7 @@ interface AttachmentPreviewProps {
 }
 
 export function AttachmentPreview({ attachments, onRemove, onRetry }: AttachmentPreviewProps) {
+  const { trackClick } = useAnalytics();
   if (attachments.length === 0) return null;
 
   return (
