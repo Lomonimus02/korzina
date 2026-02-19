@@ -37,6 +37,7 @@ export async function getIndividualPrompts(page = 1, pageSize = 30) {
 
   const [rows, total] = await Promise.all([
     prisma.message.findMany({
+      where: { role: "assistant" },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -57,7 +58,7 @@ export async function getIndividualPrompts(page = 1, pageSize = 30) {
         },
       },
     }),
-    prisma.message.count(),
+    prisma.message.count({ where: { role: "assistant" } }),
   ]);
 
   const data: PromptRow[] = rows.map((r: any) => ({
