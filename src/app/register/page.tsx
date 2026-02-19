@@ -50,6 +50,7 @@ function RegisterForm() {
   }, [resendCooldown]);
 
   const handleGoogleSignIn = async () => {
+    trackClick("register_google");
     setIsGoogleLoading(true);
     setError("");
     try {
@@ -296,7 +297,7 @@ function RegisterForm() {
                       />
                       <button
                         type="button"
-                        onClick={() => setShowPassword(!showPassword)}
+                        onClick={() => { trackClick("register_toggle_password"); setShowPassword(!showPassword); }}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white transition-colors"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -361,7 +362,7 @@ function RegisterForm() {
                     <span className="text-white font-medium">{email}</span>
                   </p>
                 </div>
-                <form onSubmit={handleVerifySubmit} className="grid gap-4">
+                <form onSubmit={(e) => { trackClick("register_verify_submit"); handleVerifySubmit(e); }} className="grid gap-4">
                   <div className="grid gap-2">
                     <label className="text-sm font-medium leading-none text-center">Код подтверждения</label>
                     <div className="flex gap-2 justify-center">
@@ -393,7 +394,7 @@ function RegisterForm() {
                 <div className="flex flex-col gap-2 mt-2">
                   <button 
                     type="button"
-                    onClick={handleResendCode}
+                    onClick={() => { trackClick("register_resend_code"); handleResendCode(); }}
                     disabled={isLoading || resendCooldown > 0}
                     className={`text-sm transition-colors text-center ${
                       resendCooldown > 0 
@@ -409,6 +410,7 @@ function RegisterForm() {
                   <button 
                     type="button"
                     onClick={() => {
+                      trackClick("register_back");
                       setStep("register");
                       setOtpCode(["", "", "", "", "", ""]);
                       setError("");

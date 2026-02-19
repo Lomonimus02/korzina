@@ -29,7 +29,7 @@ export function SidebarClient({ user }: SidebarClientProps) {
     >
       {/* Collapse Toggle - Visible on hover */}
       <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
+        onClick={() => { trackClick("sidebar_toggle"); setIsCollapsed(!isCollapsed); }}
         className={cn(
           "absolute -right-3 z-50 h-6 w-6 rounded-full bg-zinc-800 border border-white/10 text-zinc-400 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:text-white hover:bg-zinc-700 shadow-lg",
           isCollapsed ? "top-10" : "top-6"

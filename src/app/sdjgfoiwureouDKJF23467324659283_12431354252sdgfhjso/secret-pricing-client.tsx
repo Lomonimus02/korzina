@@ -4,9 +4,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Check } from "lucide-react";
+import { useAnalytics } from "@/hooks/use-analytics";
 
 export function SecretPricingClient() {
   const [isLoading, setIsLoading] = useState(false);
+  const { trackClick } = useAnalytics();
 
   const handlePurchase = async () => {
     setIsLoading(true);
@@ -70,7 +72,7 @@ export function SecretPricingClient() {
         <CardFooter>
           <Button 
             className="w-full bg-purple-600 hover:bg-purple-700 text-white" 
-            onClick={handlePurchase}
+            onClick={() => { trackClick("secret_test_purchase"); handlePurchase(); }}
             disabled={isLoading}
           >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

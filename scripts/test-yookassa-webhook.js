@@ -12,7 +12,7 @@
  *   node scripts/test-yookassa-webhook.js abc123 CREATOR                  # Подписка CREATOR
  *   node scripts/test-yookassa-webhook.js abc123 PRO                     # Подписка PRO
  *   node scripts/test-yookassa-webhook.js abc123 - LIFETIME_PACK          # Пакет "Копилка" (100 кредитов)
- *   node scripts/test-yookassa-webhook.js abc123 - TOPUP_PACK             # Пакет "Докупка" (25 кредитов)
+ *   node scripts/test-yookassa-webhook.js abc123 - TOPUP_PACK             # Пакет "Дополнительный пакет" (25 кредитов)
  */
 
 const WEBHOOK_URL = 'http://localhost:3000/api/payment/webhook/yookassa';
@@ -28,7 +28,7 @@ const PLANS = {
 
 const PACKS = {
   LIFETIME_PACK: { amount: '1290.00', credits: 100, description: 'Копилка (100 вечных кредитов)' },
-  TOPUP_PACK: { amount: '290.00', credits: 25, description: 'Докупка (25 вечных кредитов)' },
+  TOPUP_PACK: { amount: '290.00', credits: 25, description: 'Дополнительный пакет (25 вечных кредитов)' },
 };
 
 async function testWebhook() {

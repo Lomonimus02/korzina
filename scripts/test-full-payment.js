@@ -33,7 +33,7 @@ const PLANS = {
 
 const PACKS = {
   LIFETIME_PACK: { amount: 1290, credits: 100, description: 'Копилка (100 вечных кредитов)' },
-  TOPUP_PACK: { amount: 290, credits: 25, description: 'Докупка (25 вечных кредитов)' },
+  TOPUP_PACK: { amount: 290, credits: 25, description: 'Дополнительный пакет (25 вечных кредитов)' },
 };
 
 async function testFullPayment() {

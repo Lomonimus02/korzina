@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from "react";
 import { Upload, X, Image as ImageIcon, Loader2, Check, Copy, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUpload } from "@/hooks/use-upload";
+import { useAnalytics } from "@/hooks/use-analytics";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +39,7 @@ export function CloudUpload({ onUploadComplete, className }: CloudUploadProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadFile, isLoading, error } = useUpload();
+  const { trackClick } = useAnalytics();
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -135,7 +137,7 @@ export function CloudUpload({ onUploadComplete, className }: CloudUploadProps) {
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
             onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => { trackClick("cloud_upload_open"); fileInputRef.current?.click(); }}
             className={`
               relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer
               transition-all duration-200
@@ -223,7 +225,7 @@ export function CloudUpload({ onUploadComplete, className }: CloudUploadProps) {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-zinc-400 hover:text-zinc-200"
-                              onClick={() => copyToClipboard(asset.url, asset.id)}
+                              onClick={() => { trackClick("cloud_copy_url"); copyToClipboard(asset.url, asset.id); }}
                             >
                               {copiedId === asset.id ? (
                                 <Check className="h-4 w-4 text-green-400" />
@@ -242,7 +244,7 @@ export function CloudUpload({ onUploadComplete, className }: CloudUploadProps) {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-zinc-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => removeAsset(asset.id)}
+                        onClick={() => { trackClick("cloud_remove_asset"); removeAsset(asset.id); }}
                       >
                         <X className="h-4 w-4" />
                       </Button>

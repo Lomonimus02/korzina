@@ -251,8 +251,8 @@ export const YOOKASSA_PACKS: Record<string, PlanConfig> = {
   TOPUP_PACK: {
     amount: 290,
     credits: 25,
-    name: "Докупка",
-    description: "Пакет Moonely - Докупка (25 вечных кредитов)",
+    name: "Дополнительный пакет",
+    description: "Пакет Moonely - Дополнительный пакет (25 вечных кредитов)",
     purchaseType: 'TOPUP_PACK',
     features: [
       "Кредиты не сгорают никогда",

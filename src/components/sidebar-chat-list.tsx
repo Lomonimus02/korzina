@@ -31,6 +31,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useAnalytics } from "@/hooks/use-analytics";
 
 interface Chat {
   id: string;
@@ -46,6 +47,7 @@ export function SidebarChatList({ initialChats = [] }: SidebarChatListProps) {
   const [chats, setChats] = useState<Chat[]>(initialChats);
   const pathname = usePathname();
   const router = useRouter();
+  const { trackClick } = useAnalytics();
 
   const [chatToDelete, setChatToDelete] = useState<string | null>(null);
   const [chatToRename, setChatToRename] = useState<Chat | null>(null);
@@ -170,6 +172,7 @@ export function SidebarChatList({ initialChats = [] }: SidebarChatListProps) {
               <DropdownMenuContent align="end" className="bg-zinc-950 border-white/10">
                 <DropdownMenuItem
                   onClick={() => {
+                    trackClick("chat_rename_open");
                     setChatToRename(chat);
                     setRenameValue(chat.title);
                   }}
@@ -179,7 +182,7 @@ export function SidebarChatList({ initialChats = [] }: SidebarChatListProps) {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
-                  onClick={() => setChatToDelete(chat.id)}
+                  onClick={() => { trackClick("chat_delete_init"); setChatToDelete(chat.id); }}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Удалить
@@ -211,6 +214,7 @@ export function SidebarChatList({ initialChats = [] }: SidebarChatListProps) {
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
+                trackClick("chat_delete_confirm");
                 handleDelete();
               }}
               disabled={isLoading}
@@ -248,7 +252,7 @@ export function SidebarChatList({ initialChats = [] }: SidebarChatListProps) {
             <Button variant="outline" onClick={() => setChatToRename(null)} disabled={isLoading}>
               Отмена
             </Button>
-            <Button onClick={handleRename} disabled={isLoading || !renameValue.trim()}>
+            <Button onClick={() => { trackClick("chat_rename_confirm"); handleRename(); }} disabled={isLoading || !renameValue.trim()}>
               {isLoading ? "Сохранение..." : "Сохранить"}
             </Button>
           </DialogFooter>

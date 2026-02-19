@@ -16,6 +16,7 @@ import { DeployButton } from "./deploy-button";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search } from "lucide-react";
 import { getMoonelyDbFiles } from "@/lib/sandpack-sdk";
+import { useAnalytics } from "@/hooks/use-analytics";
 import { 
   isNetworkError, 
   isDocumentNullError, 
@@ -158,10 +159,12 @@ function PreviewHeader({
   canExport?: boolean
 }) {
   const { dispatch } = useSandpack();
+  const { trackClick } = useAnalytics();
   const [url, setUrl] = useState("/");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefresh = () => {
+    trackClick("preview_refresh");
     setIsRefreshing(true);
     dispatch({ type: "refresh" });
     setTimeout(() => setIsRefreshing(false), 1000);
@@ -214,7 +217,7 @@ function PreviewHeader({
           {!showPreviewOnly && (
           <div className="flex items-center bg-zinc-900/50 rounded-full border border-white/5 p-1 relative">
              <button 
-               onClick={() => onTabChange("preview")}
+               onClick={() => { trackClick("tab_preview"); onTabChange("preview"); }}
                className={cn(
                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all text-xs font-medium relative z-10",
                  activeTab === "preview" ? "text-zinc-100" : "text-zinc-500 hover:text-zinc-300"
@@ -231,7 +234,7 @@ function PreviewHeader({
                <span className="relative z-10">Превью</span>
              </button>
              <button 
-               onClick={() => onTabChange("code")}
+               onClick={() => { trackClick("tab_code"); onTabChange("code"); }}
                className={cn(
                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all text-xs font-medium relative z-10",
                  activeTab === "code" ? "text-zinc-100" : "text-zinc-500 hover:text-zinc-300"
@@ -516,8 +519,10 @@ function ApplyingStatePreview() {
 // Error State - Shows when Sandpack detects a compilation/runtime error
 function ErrorStatePreview({ onRequestFix, errorMessage }: { onRequestFix?: (errorMessage: string) => void; errorMessage?: string }) {
   const [isFixing, setIsFixing] = useState(false);
+  const { trackClick } = useAnalytics();
 
   const handleFix = () => {
+    trackClick("preview_fix_error");
     setIsFixing(true);
     const message = errorMessage 
       ? `Исправь ошибку в коде: ${errorMessage}`

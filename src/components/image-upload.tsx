@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { ImagePlus, X, Loader2, AlertCircle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAnalytics } from "@/hooks/use-analytics";
 import {
   Tooltip,
   TooltipContent,
@@ -197,6 +198,7 @@ export function ImageUpload({
 }: ImageUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const { trackClick } = useAnalytics();
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -258,6 +260,7 @@ export function ImageUpload({
   }, [onAttachmentAdd, onAttachmentUpdate]);
 
   const handleClick = (e: React.MouseEvent) => {
+    trackClick("image_attach");
     e.preventDefault();
     e.stopPropagation();
     fileInputRef.current?.click();
@@ -337,7 +340,7 @@ export function AttachmentPreview({ attachments, onRemove, onRetry }: Attachment
               {onRetry && (
                 <button
                   type="button"
-                  onClick={() => onRetry(attachment.id)}
+                  onClick={() => { trackClick("image_retry"); onRetry(attachment.id); }}
                   className="p-1 rounded-full bg-red-500/20 hover:bg-red-500/40 text-red-400 transition-all"
                 >
                   <RotateCcw className="h-3 w-3" />
@@ -349,7 +352,7 @@ export function AttachmentPreview({ attachments, onRemove, onRetry }: Attachment
           {/* Remove button */}
           <button
             type="button"
-            onClick={() => onRemove(attachment.id)}
+            onClick={() => { trackClick("image_remove"); onRemove(attachment.id); }}
             className="absolute top-1 right-1 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white/70 hover:text-white opacity-0 group-hover:opacity-100 transition-all"
           >
             <X className="h-3 w-3" />

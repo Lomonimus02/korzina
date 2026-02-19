@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Zap, Infinity } from "lucide-react";
 import Link from "next/link";
+import { useAnalytics } from "@/hooks/use-analytics";
 
 interface SidebarCreditsProps {
   initialCredits: number;
@@ -52,10 +53,12 @@ export function SidebarCredits({
 
   const totalCredits = regularCredits + lifetimeCredits;
   const hasLifetimeCredits = lifetimeCredits > 0;
+  const { trackClick } = useAnalytics();
 
   return (
     <Link 
       href="/pricing"
+      onClick={() => trackClick("credits_topup")}
       className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/15 transition-colors group"
     >
       <Zap size={16} className="text-amber-500" />

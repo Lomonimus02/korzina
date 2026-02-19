@@ -86,6 +86,7 @@ export function DeployButton({ files, chatId, projectName, className }: DeployBu
   };
 
   const handleClose = () => {
+    trackClick("deploy_close");
     setIsOpen(false);
     // Сбрасываем состояние только если не успех
     if (step !== "success") {
@@ -95,6 +96,7 @@ export function DeployButton({ files, chatId, projectName, className }: DeployBu
 
   // OAuth подключение — открываем в новом окне
   const handleConnectVercel = () => {
+    trackClick("deploy_connect_vercel");
     // Открываем OAuth в popup окне
     const width = 600;
     const height = 700;
@@ -121,6 +123,7 @@ export function DeployButton({ files, chatId, projectName, className }: DeployBu
 
   // Отключение Vercel
   const handleDisconnectVercel = async () => {
+    trackClick("deploy_disconnect");
     try {
       await fetch("/api/vercel/disconnect", { method: "POST" });
       setVercelStatus(null);
@@ -132,6 +135,7 @@ export function DeployButton({ files, chatId, projectName, className }: DeployBu
 
   // Ручной ввод токена (fallback)
   const handleSaveToken = () => {
+    trackClick("deploy_save_token");
     if (vercelToken.trim()) {
       // Сохраняем токен через API deploy (он сохранит его в БД)
       setStep("initial");
@@ -223,6 +227,7 @@ export function DeployButton({ files, chatId, projectName, className }: DeployBu
   };
 
   const copyToClipboard = (text: string) => {
+    trackClick("deploy_copy_url");
     navigator.clipboard.writeText(text);
   };
 

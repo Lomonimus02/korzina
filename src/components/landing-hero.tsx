@@ -150,7 +150,7 @@ export function LandingHero({ user }: LandingHeroProps) {
                     />
                     <button
                       type="button"
-                      onClick={() => setImages(images.filter((_, i) => i !== index))}
+                      onClick={() => { trackClick("landing_remove_image"); setImages(images.filter((_, i) => i !== index)); }}
                       className="absolute top-1 right-1 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white/70 hover:text-white opacity-0 group-hover/img:opacity-100 transition-all"
                     >
                       <X className="h-3 w-3" />

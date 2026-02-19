@@ -1055,7 +1055,7 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
             <p className="text-xs opacity-90">{error}</p>
           </div>
           {error === "Недостаточно кредитов" && (
-            <Button asChild variant="secondary" size="sm" className="w-full mt-2 bg-red-500/20 hover:bg-red-500/30 text-red-200 border-none">
+            <Button asChild variant="secondary" size="sm" className="w-full mt-2 bg-red-500/20 hover:bg-red-500/30 text-red-200 border-none" onClick={() => trackClick("upgrade_plan")}>
               <Link href="/pricing">Upgrade Plan</Link>
             </Button>
           )}
@@ -1068,7 +1068,7 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
         <div className="h-14 flex items-center justify-between px-4 shrink-0 bg-zinc-950/80 backdrop-blur-xl z-20 relative">
            <div className="flex items-center gap-3">
              {!showHistory && (
-               <Link href="/" className="active:scale-95 transition-transform p-1 hover:bg-white/5 rounded-full text-zinc-400 hover:text-white">
+               <Link href="/" onClick={() => trackClick("mobile_back")} className="active:scale-95 transition-transform p-1 hover:bg-white/5 rounded-full text-zinc-400 hover:text-white">
                  <ChevronLeft className="h-6 w-6" />
                </Link>
              )}
@@ -1079,7 +1079,7 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
            <div className="flex items-center gap-3">
              <motion.button 
                whileTap={{ scale: 0.9 }}
-               onClick={() => setShowHistory(!showHistory)} 
+               onClick={() => { trackClick("mobile_toggle_history"); setShowHistory(!showHistory); }} 
                className={`p-2 rounded-full transition-colors ${showHistory ? 'bg-white/10 text-white' : 'text-zinc-400 hover:bg-white/5'}`}
              >
                <Archive className="h-5 w-5" />
@@ -1184,10 +1184,10 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                                 {/* Show Fix Error button if there's a code error on the latest assistant message */}
                                 {hasCodeError && index === messages.length - 1 && hasCodeBlocks(msg.content) && !isLoading && !isApplying && (
                                   <button
-                                    onClick={() => handleRequestFix(codeErrorMessage 
+                                    onClick={() => { trackClick("fix_error_mobile"); handleRequestFix(codeErrorMessage 
                                       ? `Исправь ошибку в коде: ${codeErrorMessage}`
                                       : "Исправь ошибку в коде. Код не компилируется."
-                                    )}
+                                    ); }}
                                     className="mt-2 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:text-red-300 hover:bg-red-500/15 hover:border-red-500/30 transition-all text-xs font-medium"
                                   >
                                     <AlertTriangle className="w-3.5 h-3.5" />
@@ -1262,7 +1262,7 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
         <div className="bg-zinc-950/80 backdrop-blur-xl flex items-center justify-center gap-4 px-4 shrink-0 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2">
            <div className="bg-black/40 p-1 rounded-full flex items-center shadow-lg relative border border-white/5">
               <button 
-                onClick={() => setMobileTab('chat')} 
+                onClick={() => { trackClick("mobile_tab_chat"); setMobileTab('chat'); }} 
                 className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition-all relative z-10 ${mobileTab === 'chat' ? 'text-white' : 'text-zinc-500'}`}
               >
                 {mobileTab === 'chat' && (
@@ -1276,7 +1276,7 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                 <span className="relative z-10">Чат</span>
               </button>
               <button 
-                onClick={() => setMobileTab('preview')} 
+                onClick={() => { trackClick("mobile_tab_preview"); setMobileTab('preview'); }} 
                 className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition-all relative z-10 ${mobileTab === 'preview' ? 'text-white' : 'text-zinc-500'}`}
               >
                 {mobileTab === 'preview' && (
@@ -1319,7 +1319,7 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                 autoFocus
               />
             ) : (
-              <div className="flex items-center gap-2 group cursor-pointer overflow-hidden" onClick={() => setIsEditingTitle(true)}>
+              <div className="flex items-center gap-2 group cursor-pointer overflow-hidden" onClick={() => { trackClick("edit_title"); setIsEditingTitle(true); }}>
                 <h2 className="text-sm font-medium text-zinc-200 truncate group-hover:text-white transition-colors">
                   {title || "New Project"}
                 </h2>
@@ -1336,6 +1336,7 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                        size="sm"
                        className="h-8 px-3 text-xs text-zinc-400 hover:text-white hover:bg-white/10"
                        onClick={() => {
+                         trackClick("publish_open");
                          setPublishTitle(title || "");
                          setPublishDescription("");
                          setPublishThumbnail("");
@@ -1460,13 +1461,13 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                      <DialogFooter>
                        <Button
                          variant="ghost"
-                         onClick={() => setIsPublishDialogOpen(false)}
+                         onClick={() => { trackClick("publish_cancel"); setIsPublishDialogOpen(false); }}
                          disabled={isPublishing}
                        >
                          Cancel
                        </Button>
                        <Button
-                         onClick={handlePublish}
+                         onClick={() => { trackClick("publish_confirm"); handlePublish(); }}
                          disabled={isPublishing || isThumbnailUploading || !publishTitle.trim()}
                          className="bg-indigo-600 hover:bg-indigo-700"
                        >
@@ -1578,10 +1579,10 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                               <motion.button
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                onClick={() => handleRequestFix(codeErrorMessage 
+                                onClick={() => { trackClick("fix_error_desktop"); handleRequestFix(codeErrorMessage 
                                   ? `Исправь ошибку в коде: ${codeErrorMessage}`
                                   : "Исправь ошибку в коде. Код не компилируется."
-                                )}
+                                ); }}
                                 className="mt-2 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:text-red-300 hover:bg-red-500/15 hover:border-red-500/30 transition-all text-xs font-medium"
                               >
                                 <AlertTriangle className="w-3.5 h-3.5" />

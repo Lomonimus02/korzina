@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { createNews, updateNews, deleteNews } from "@/app/actions/news";
+import { useAnalytics } from "@/hooks/use-analytics";
 
 interface NewsItem {
   id: string;
@@ -67,6 +68,7 @@ export function NewsAdminPanel({ initialNews, onNewsCreated, onNewsUpdated, onNe
   const [isUploading, setIsUploading] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { trackClick } = useAnalytics();
 
   // Reset form
   const resetForm = useCallback(() => {
@@ -252,7 +254,7 @@ export function NewsAdminPanel({ initialNews, onNewsCreated, onNewsUpdated, onNe
     <>
       {/* Create News Button */}
       <Button
-        onClick={openCreateDialog}
+        onClick={() => { trackClick("news_create_open"); openCreateDialog(); }}
         className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
       >
         <Plus className="w-4 h-4 mr-2" />
@@ -282,7 +284,7 @@ export function NewsAdminPanel({ initialNews, onNewsCreated, onNewsUpdated, onNe
                     variant="ghost"
                     size="sm"
                     className="h-7 w-7 p-0 text-zinc-400 hover:text-white"
-                    onClick={() => openEditDialog(item)}
+                    onClick={() => { trackClick("news_edit_open"); openEditDialog(item); }}
                   >
                     <Edit className="w-3.5 h-3.5" />
                   </Button>
@@ -290,7 +292,7 @@ export function NewsAdminPanel({ initialNews, onNewsCreated, onNewsUpdated, onNe
                     variant="ghost"
                     size="sm"
                     className="h-7 w-7 p-0 text-zinc-400 hover:text-red-500"
-                    onClick={() => setDeletingNews(item)}
+                    onClick={() => { trackClick("news_delete_init"); setDeletingNews(item); }}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
@@ -417,7 +419,7 @@ export function NewsAdminPanel({ initialNews, onNewsCreated, onNewsUpdated, onNe
               Отмена
             </Button>
             <Button
-              onClick={editingNews ? handleUpdate : handleCreate}
+              onClick={() => { trackClick("news_submit"); (editingNews ? handleUpdate : handleCreate)(); }}
               disabled={isSubmitting || isUploading || !title.trim() || !content.trim()}
               className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
             >
@@ -455,7 +457,7 @@ export function NewsAdminPanel({ initialNews, onNewsCreated, onNewsUpdated, onNe
               Отмена
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={() => { trackClick("news_delete_confirm"); handleDelete(); }}
               disabled={isDeleting}
               className="bg-red-500 hover:bg-red-600 text-white"
             >

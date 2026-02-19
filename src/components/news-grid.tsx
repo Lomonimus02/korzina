@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Newspaper, Calendar, X } from "lucide-react";
 import { NewsAdminPanel } from "@/components/news-admin-panel";
+import { useAnalytics } from "@/hooks/use-analytics";
 
 interface NewsItem {
   id: string;
@@ -44,6 +45,7 @@ function truncateText(text: string, maxLength: number): string {
 export function NewsGrid({ items: initialItems, isAdmin = false }: NewsGridProps) {
   const [items, setItems] = useState(initialItems);
   const [selectedItem, setSelectedItem] = useState<NewsItem | null>(null);
+  const { trackClick } = useAnalytics();
 
   // Callback to add new news item to list
   const handleNewsCreated = (newItem: NewsItem) => {
@@ -101,7 +103,7 @@ export function NewsGrid({ items: initialItems, isAdmin = false }: NewsGridProps
               {items.map((item) => (
                 <article
                   key={item.id}
-                  onClick={() => setSelectedItem(item)}
+                  onClick={() => { trackClick("news_article_open"); setSelectedItem(item); }}
                   className="group cursor-pointer bg-zinc-900/50 rounded-xl border border-zinc-800/50 overflow-hidden hover:border-zinc-700 transition-all duration-300 hover:shadow-lg hover:shadow-orange-500/5 flex flex-col md:flex-row"
                 >
                   {/* Image */}
@@ -165,7 +167,7 @@ export function NewsGrid({ items: initialItems, isAdmin = false }: NewsGridProps
             <article className="flex flex-col">
               {/* Close Button */}
               <button
-                onClick={() => setSelectedItem(null)}
+                onClick={() => { trackClick("news_article_close"); setSelectedItem(null); }}
                 className="absolute top-4 right-4 z-10 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
               >
                 <X className="w-5 h-5" />

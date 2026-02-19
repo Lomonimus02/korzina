@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Loader2, CheckCircle, XCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useAnalytics } from "@/hooks/use-analytics";
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
@@ -13,6 +14,7 @@ function PaymentSuccessContent() {
   
   const [status, setStatus] = useState<"loading" | "success" | "pending" | "error">("loading");
   const [checkCount, setCheckCount] = useState(0);
+  const { trackClick } = useAnalytics();
 
   useEffect(() => {
     if (!paymentId) {
@@ -116,6 +118,7 @@ function PaymentSuccessContent() {
             <Button 
               variant="outline" 
               onClick={() => {
+                trackClick("payment_check_again");
                 setStatus("loading");
                 setCheckCount(0);
                 window.location.reload();

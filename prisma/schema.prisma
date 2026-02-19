@@ -17,7 +17,7 @@ model User {
   email         String    @unique
   password      String?   // Хеш пароля (опционально для OAuth пользователей)
   credits       Int       @default(0)          // Кредиты от подписки (обнуляются в конце периода если не продлено)
-  lifetimeCredits Int     @default(0)          // Вечные кредиты (Копилка, Докупка) - никогда не сгорают
+  lifetimeCredits Int     @default(0)          // Вечные кредиты (Копилка, Дополнительный пакет) - никогда не сгорают
   plan          Plan      @default(FREE)
   role          Role      @default(USER) // Admin role for showcase publishing
   isVerified    Boolean   @default(false)
@@ -221,7 +221,7 @@ model News {
 enum PurchaseType {
   SUBSCRIPTION    // Подписка (30 дней, кредиты обновляются)
   LIFETIME_PACK   // Пакет "Копилка" (вечные кредиты)
-  TOPUP_PACK      // Пакет "Докупка" (вечные кредиты)
+  TOPUP_PACK      // Пакет "Дополнительный пакет" (вечные кредиты)
 }
 
 // Платежи через ЮКасса API v3

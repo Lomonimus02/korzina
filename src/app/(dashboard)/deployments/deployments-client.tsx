@@ -25,6 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { useAnalytics } from "@/hooks/use-analytics";
 
 interface Deployment {
   id: string;
@@ -44,6 +45,7 @@ export default function DeploymentsClient({ deployments: initialDeployments }: D
   const [deployments, setDeployments] = useState(initialDeployments);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { trackClick } = useAnalytics();
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -193,7 +195,7 @@ export default function DeploymentsClient({ deployments: initialDeployments }: D
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => window.open(deployment.url!, "_blank")}
+                          onClick={() => { trackClick("deployment_open"); window.open(deployment.url!, "_blank"); }}
                           className="text-zinc-400 hover:text-white"
                         >
                           <ExternalLink className="h-4 w-4" />
@@ -215,7 +217,7 @@ export default function DeploymentsClient({ deployments: initialDeployments }: D
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => setDeleteId(deployment.id)}
+                        onClick={() => { trackClick("deployment_delete_init"); setDeleteId(deployment.id); }}
                         className="text-zinc-500 hover:text-red-400"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -244,7 +246,7 @@ export default function DeploymentsClient({ deployments: initialDeployments }: D
               Отмена
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={() => { trackClick("deployment_delete_confirm"); handleDelete(); }}
               disabled={isDeleting}
               className="bg-red-600 hover:bg-red-700"
             >

@@ -182,7 +182,7 @@ export function PricingClient({ currentPlan, isAuthenticated }: PricingClientPro
     },
     {
       id: "TOPUP_PACK",
-      name: "Докупка",
+      name: "Дополнительный пакет",
       price: "290",
       description: "Спасательный круг, если не хватило пары попыток",
       credits: "25 кредитов",
@@ -192,7 +192,7 @@ export function PricingClient({ currentPlan, isAuthenticated }: PricingClientPro
       ],
       purchaseType: 'TOPUP_PACK' as const,
       icon: ShoppingBag,
-      highlight: "Для подписчиков",
+      highlight: "Для тех, у кого подключен тариф",
       requiresSubscription: true,
     },
   ];
@@ -318,7 +318,7 @@ export function PricingClient({ currentPlan, isAuthenticated }: PricingClientPro
                   </button>
                 ) : (
                   <button 
-                    onClick={() => router.push("/register")}
+                    onClick={() => { trackClick("pricing_start_free"); router.push("/register"); }}
                     className="w-full py-2.5 rounded-full font-semibold text-sm bg-white/5 text-white border border-white/10 hover:bg-white/10 transition-colors"
                   >
                     Начать бесплатно

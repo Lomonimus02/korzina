@@ -9,6 +9,7 @@ import {
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { LogOut, User, ChevronUp } from "lucide-react";
+import { useAnalytics } from "@/hooks/use-analytics";
 
 interface UserProfileProps {
   email: string;
@@ -20,6 +21,7 @@ interface UserProfileProps {
 export function UserProfile({ email, plan, isCollapsed, side = "top" }: UserProfileProps) {
   const displayName = email.split('@')[0];
   const initial = email[0].toUpperCase();
+  const { trackClick } = useAnalytics();
   
   return (
     <DropdownMenu>
@@ -47,7 +49,7 @@ export function UserProfile({ email, plan, isCollapsed, side = "top" }: UserProf
             </span>
           </div>
         )}
-        <DropdownMenuItem asChild className="text-zinc-300 focus:text-white focus:bg-white/5">
+        <DropdownMenuItem asChild className="text-zinc-300 focus:text-white focus:bg-white/5" onClick={() => trackClick("profile_account")}>
           <Link href="/account" className="cursor-pointer">
             <User className="mr-2 h-4 w-4" />
             <span>Мой аккаунт</span>
@@ -55,7 +57,7 @@ export function UserProfile({ email, plan, isCollapsed, side = "top" }: UserProf
         </DropdownMenuItem>
         <DropdownMenuItem
           className="text-red-400 cursor-pointer focus:text-red-400 focus:bg-red-500/10"
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={() => { trackClick("profile_signout"); signOut({ callbackUrl: "/login" }); }}
         >
           <LogOut className="mr-2 h-4 w-4" />
           <span>Выйти</span>

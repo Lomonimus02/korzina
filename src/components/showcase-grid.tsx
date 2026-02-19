@@ -22,6 +22,7 @@ import {
 import { Sparkles, Loader2, X, Code2, Trash2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { deleteShowcaseItem } from "@/app/actions/showcase";
+import { useAnalytics } from "@/hooks/use-analytics";
 
 // Dynamically import CodeViewer to avoid SSR issues with Sandpack
 const CodeViewer = dynamic(() => import("@/components/code-viewer"), {
@@ -51,6 +52,7 @@ interface ShowcaseGridProps {
 
 export function ShowcaseGrid({ items: initialItems, isLoggedIn, isAdmin = false }: ShowcaseGridProps) {
   const router = useRouter();
+  const { trackClick } = useAnalytics();
   const [items, setItems] = useState(initialItems);
   const [selectedItem, setSelectedItem] = useState<ShowcaseItem | null>(null);
   const [isRemixing, setIsRemixing] = useState(false);
@@ -126,7 +128,7 @@ export function ShowcaseGrid({ items: initialItems, isLoggedIn, isAdmin = false 
               <div
                 key={item.id}
                 className="group relative cursor-pointer"
-                onClick={() => setSelectedItem(item)}
+                onClick={() => { trackClick("showcase_item_open"); setSelectedItem(item); }}
               >
                 {/* Admin delete button */}
                 {isAdmin && (
@@ -134,6 +136,7 @@ export function ShowcaseGrid({ items: initialItems, isLoggedIn, isAdmin = false 
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
+                        trackClick("showcase_delete_init");
                         setItemToDelete(item);
                       }}
                       className="p-1.5 bg-red-500 hover:bg-red-600 rounded-full text-white shadow-lg transition-colors"
@@ -200,7 +203,7 @@ export function ShowcaseGrid({ items: initialItems, isLoggedIn, isAdmin = false 
               </div>
               <div className="flex items-center gap-2 md:gap-3 shrink-0">
                 <Button
-                  onClick={handleRemix}
+                  onClick={() => { trackClick("showcase_remix"); handleRemix(); }}
                   disabled={isRemixing}
                   className="bg-indigo-600 hover:bg-indigo-700 text-xs md:text-sm px-3 md:px-4 h-8 md:h-9"
                 >
@@ -220,7 +223,7 @@ export function ShowcaseGrid({ items: initialItems, isLoggedIn, isAdmin = false 
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setSelectedItem(null)}
+                  onClick={() => { trackClick("showcase_close"); setSelectedItem(null); }}
                   className="text-zinc-400 hover:text-white h-8 w-8 md:h-9 md:w-9"
                 >
                   <X className="w-4 h-4 md:w-5 md:h-5" />
@@ -256,7 +259,7 @@ export function ShowcaseGrid({ items: initialItems, isLoggedIn, isAdmin = false 
               Отмена
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={() => { trackClick("showcase_delete_confirm"); handleDelete(); }}
               disabled={isDeleting}
               className="bg-red-500 hover:bg-red-600 text-white"
             >

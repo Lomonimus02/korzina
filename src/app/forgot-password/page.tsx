@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Moon, Loader2, ArrowUp, ArrowLeft, Mail, Eye, EyeOff, Check } from "lucide-react";
 import { TypewriterEffect } from "@/components/typewriter-effect";
+import { useAnalytics } from "@/hooks/use-analytics";
 
 function ForgotPasswordForm() {
   const router = useRouter();
+  const { trackClick } = useAnalytics();
   
   const [step, setStep] = useState<"email" | "verify" | "success">("email");
   const [email, setEmail] = useState("");
@@ -253,7 +255,7 @@ function ForgotPasswordForm() {
                     Введите email для восстановления доступа к аккаунту
                   </p>
                 </div>
-                <form onSubmit={handleEmailSubmit} className="grid gap-4">
+                <form onSubmit={(e) => { trackClick("forgot_send_code"); handleEmailSubmit(e); }} className="grid gap-4">
                   <div className="grid gap-2">
                     <label htmlFor="email" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Email</label>
                     <Input
@@ -299,7 +301,7 @@ function ForgotPasswordForm() {
                     <span className="text-white font-medium">{email}</span>
                   </p>
                 </div>
-                <form onSubmit={handleResetSubmit} className="grid gap-4">
+                <form onSubmit={(e) => { trackClick("forgot_save_password"); handleResetSubmit(e); }} className="grid gap-4">
                   <div className="grid gap-2">
                     <label className="text-sm font-medium leading-none text-center">Код подтверждения</label>
                     <div className="flex gap-2 justify-center">
@@ -332,7 +334,7 @@ function ForgotPasswordForm() {
                       />
                       <button
                         type="button"
-                        onClick={() => setShowPassword(!showPassword)}
+                        onClick={() => { trackClick("forgot_toggle_password"); setShowPassword(!showPassword); }}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white transition-colors"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -359,7 +361,7 @@ function ForgotPasswordForm() {
                 <div className="flex flex-col gap-2 mt-2">
                   <button 
                     type="button"
-                    onClick={handleResendCode}
+                    onClick={() => { trackClick("forgot_resend_code"); handleResendCode(); }}
                     disabled={isLoading || resendCooldown > 0}
                     className={`text-sm transition-colors text-center ${
                       resendCooldown > 0 
@@ -375,6 +377,7 @@ function ForgotPasswordForm() {
                   <button 
                     type="button"
                     onClick={() => {
+                      trackClick("forgot_change_email");
                       setStep("email");
                       setOtpCode(["", "", "", "", "", ""]);
                       setNewPassword("");
@@ -407,7 +410,7 @@ function ForgotPasswordForm() {
                 </div>
                 {autoLoginFailed && (
                   <Button 
-                    onClick={() => router.push("/login")}
+                    onClick={() => { trackClick("forgot_go_login"); router.push("/login"); }}
                     className="w-full bg-white text-black hover:bg-white/90 font-medium h-10 transition-all"
                   >
                     Войти в аккаунт
