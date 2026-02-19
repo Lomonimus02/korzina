@@ -9,11 +9,14 @@ import { usePathname } from "next/navigation";
  */
 async function sendEvent(type: string, page: string, meta?: Record<string, unknown>) {
   try {
-    await fetch("/api/analytics/track", {
+    const res = await fetch("/api/analytics/track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type, page, meta }),
     });
+    if (!res.ok) {
+      console.warn("[Analytics] Server returned", res.status, await res.text().catch(() => ""));
+    }
   } catch (err) {
     // Non-critical — don't break the UI
     console.error("[Analytics]", err);
