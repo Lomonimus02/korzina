@@ -1,0 +1,269 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(uuid()) // UUID безопаснее цифр
+  email         String    @unique
+  password      String?   // Хеш пароля (опционально для OAuth пользователей)
+  credits       Int       @default(0)          // Кредиты от подписки (обнуляются в конце периода если не продлено)
+  lifetimeCredits Int     @default(0)          // Вечные кредиты (Копилка, Дополнительный пакет) - никогда не сгорают
+  plan          Plan      @default(FREE)
+  role          Role      @default(USER) // Admin role for showcase publishing
+  isVerified    Boolean   @default(false)
+  emailVerified DateTime?
+  image         String?   // Аватар пользователя (для OAuth)
+  name          String?   // Имя пользователя (для OAuth)
+  vercelToken   String?   // Зашифрованный токен Vercel для деплоя
+  createdAt     DateTime  @default(now())
+  
+  // Лимиты для бесплатного плана
+  dailyGenerations   Int       @default(0)      // Использовано генераций сегодня
+  dailyResetAt       DateTime  @default(now())  // Когда сбрасывать дневной счётчик
+  monthlyGenerations Int       @default(0)      // Использовано генераций в этом месяце
+  monthlyResetAt     DateTime  @default(now())  // Когда сбрасывать месячный счётчик
+  
+  // Подписка
+  subscriptionStartAt DateTime? // Начало текущего периода подписки
+  subscriptionEndAt   DateTime? // Конец текущего периода подписки (30 дней)
+  
+  chats         Chat[]
+  transactions  Transaction[]
+  deployments   Deployment[]
+  assets        Asset[]   // Moonely Cloud assets
+  accounts      Account[] // OAuth аккаунты (Google, GitHub и т.д.)
+  payments      Payment[] // Платежи через ЮКасса
+  analyticsEvents AnalyticsEvent[] // Behavioral analytics
+}
+
+// OAuth аккаунты для NextAuth.js (Google, GitHub, Yandex и т.д.)
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String  // "google", "github", "yandex"
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+  attempts   Int      @default(0) // Brute-force protection: max 5 attempts
+
+  @@unique([identifier, token])
+}
+
+model PasswordResetToken {
+  identifier String   // email
+  token      String   // OTP code
+  expires    DateTime
+  attempts   Int      @default(0) // Brute-force protection: max 5 attempts
+
+  @@unique([identifier, token])
+}
+
+enum Plan {
+  FREE      // Бесплатный старт: 3 генерации/день, 15/месяц, без ZIP
+  STARTER   // Старт: 390₽, 40 кредитов
+  CREATOR   // Создатель: 990₽, 150 кредитов (хит продаж)
+  PRO       // Про: 1490₽, 300 кредитов
+  STUDIO    // Студия: 2490₽, 600 кредитов
+  AGENCY    // Агентство: 5990₽, 1500 кредитов
+}
+
+model Transaction {
+  id         String            @id @default(uuid())
+  userId     String
+  user       User              @relation(fields: [userId], references: [id])
+  amount     Float
+  status     TransactionStatus @default(PENDING)
+  providerId String?           // YooMoney operation_id
+  createdAt  DateTime          @default(now())
+}
+
+enum TransactionStatus {
+  PENDING
+  PAID
+}
+
+model Chat {
+  id             String          @id @default(uuid())
+  title          String
+  createdAt      DateTime        @default(now())
+  userId         String
+  user           User            @relation(fields: [userId], references: [id])
+  messages       Message[]
+  virtualRecords VirtualRecord[] // Virtual Backend data for this chat/project
+}
+
+model Message {
+  id               String   @id @default(uuid())
+  role             String   // 'user' или 'assistant'
+  content          String   // Текст сообщения или код
+  createdAt        DateTime @default(now())
+  chatId           String
+  chat             Chat     @relation(fields: [chatId], references: [id])
+  promptTokens     Int?     @default(0)
+  completionTokens Int?     @default(0)
+  cost             Float?   @default(0.0) // Cost in USD
+}
+
+// Модель для хранения информации о деплоях сайтов пользователей
+model Deployment {
+  id              String           @id @default(uuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id])
+  chatId          String?          // Связь с чатом, откуда был создан сайт
+  projectName     String           // Имя проекта (для URL)
+  vercelProjectId String?          // ID проекта в Vercel
+  vercelDeploymentId String?       // ID деплоя в Vercel
+  url             String?          // URL опубликованного сайта (например, project-abc123.vercel.app)
+  customDomain    String?          // Кастомный домен пользователя
+  status          DeploymentStatus @default(PENDING)
+  files           String           // JSON с файлами сайта (для возможности редеплоя)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+enum DeploymentStatus {
+  PENDING    // Ожидает деплоя
+  DEPLOYING  // В процессе деплоя
+  DEPLOYED   // Успешно опубликован
+  FAILED     // Ошибка деплоя
+}
+
+// Moonely Cloud - файлы пользователей в Yandex Object Storage
+model Asset {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileName  String   // Оригинальное имя файла
+  fileKey   String   // Путь в бакете (assets/userId/uuid.ext)
+  url       String   // Полный публичный URL
+  size      Int      // Размер в байтах
+  mimeType  String   // MIME тип файла
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Showcase - published templates for the landing page
+model ShowcaseItem {
+  id            String   @id @default(uuid())
+  title         String
+  description   String?
+  thumbnail     String?  // URL of screenshot
+  filesSnapshot Json     // The files content at the moment of publishing
+  chatId        String?  // Origin chat ID (not a relation to allow chat deletion)
+  order         Int      @default(0) // For manual ordering by admin
+  createdAt     DateTime @default(now())
+}
+
+// Virtual Backend - dynamic JSON storage for generated Sandpack apps
+model VirtualRecord {
+  id         String   @id @default(uuid())
+  chatId     String   // Links data to a specific project/chat
+  collection String   // Acts like a table name (e.g., "todos", "users")
+  data       Json     // The actual data payload
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  chat       Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@index([chatId, collection])
+}
+
+// API Key for external access to Virtual Backend (deployed sites)
+model ProjectApiKey {
+  id        String   @id @default(cuid())
+  projectId String   @unique // chatId of the project
+  key       String   @unique // Format: "mk_..."
+  createdAt DateTime @default(now())
+
+  @@index([key])
+}
+
+// News/Blog posts for the landing page (admin only)
+model News {
+  id        String   @id @default(uuid())
+  title     String
+  content   String   @db.Text // Full article content
+  image     String?  // Optional cover image URL
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Тип покупки
+enum PurchaseType {
+  SUBSCRIPTION    // Подписка (30 дней, кредиты обновляются)
+  LIFETIME_PACK   // Пакет "Копилка" (вечные кредиты)
+  TOPUP_PACK      // Пакет "Дополнительный пакет" (вечные кредиты)
+}
+
+// Платежи через ЮКасса API v3
+model Payment {
+  id           String        @id @default(uuid())      // Внутренний ID платежа
+  yookassaId   String?       @unique                   // ID платежа в системе ЮКасса
+  amount       Float                                   // Сумма платежа
+  currency     String        @default("RUB")           // Валюта (по умолчанию RUB)
+  status       PaymentStatus @default(PENDING)         // Статус платежа
+  plan         Plan?                                   // Тарифный план (для подписок)
+  purchaseType PurchaseType  @default(SUBSCRIPTION)    // Тип покупки
+  creditsAmount Int?                                   // Количество кредитов (для пакетов)
+  description  String?                                 // Описание платежа
+  userId       String                                  // ID пользователя
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([yookassaId])
+}
+
+// Статусы платежей ЮКасса
+enum PaymentStatus {
+  PENDING       // Ожидает оплаты
+  WAITING_FOR_CAPTURE // Ожидает подтверждения (для двухстадийных платежей)
+  SUCCEEDED     // Успешно оплачен
+  CANCELED      // Отменён
+}
+
+// Behavioral analytics events (page views, button clicks, etc.)
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  userId    String?  // Optional, for logged-in users
+  type      String   // "BUTTON_CLICK" | "PAGE_VIEW" etc.
+  page      String   // URL path
+  meta      Json?    // Extra data (e.g., buttonId, timeSpentMs)
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
