@@ -32,8 +32,8 @@ export default async function PricingPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-black text-white relative">
-      {/* Gradient Background - covers entire page including footer */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-[1400px] h-[800px] bg-gradient-to-t from-orange-500/50 via-purple-500/35 to-transparent opacity-90 blur-[120px] rounded-full pointer-events-none z-0" />
+      {/* Gradient Background */}
+      <div className="fixed inset-0 pointer-events-none z-0" style={{ background: "radial-gradient(ellipse 50% 42% at 100% 0%, #001a2e 0%, #01375a 20%, #0369a1 35%, transparent 55%), radial-gradient(ellipse 50% 42% at 0% 100%, #001a2e 0%, #01375a 20%, #0369a1 35%, transparent 55%), radial-gradient(ellipse 80% 70% at 50% 55%, #1a021a 0%, #350840 35%, #5a1040 60%, transparent 100%), radial-gradient(ellipse 60% 55% at 100% 100%, #000001 0%, transparent 55%), #00000a" }} />
       <PricingClient currentPlan={currentPlan} isAuthenticated={isAuthenticated} />
       <Footer className="relative z-10" />
     </div>

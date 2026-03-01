@@ -10,7 +10,7 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 
 # Устанавливаем зависимости
-RUN npm ci
+RUN npm install --legacy-peer-deps
 
 FROM base AS builder
 WORKDIR /app
@@ -25,8 +25,9 @@ RUN npx prisma generate
 # Теперь копируем остальные файлы
 COPY . .
 
-# Отключаем телеметрию на время сборки
+# Отключаем телеметрию и сетевой запрос шрифтов на время сборки
 ENV NEXT_TELEMETRY_DISABLED 1
+ENV NEXT_FONT_GOOGLE_MOCKED 1
 
 # Собираем приложение
 RUN npm run build

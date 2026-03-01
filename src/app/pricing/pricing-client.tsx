@@ -98,7 +98,6 @@ export function PricingClient({ currentPlan, isAuthenticated }: PricingClientPro
         { text: "Быстрая скорость работы", included: true },
         { text: "Экспорт кода (ZIP)", included: true },
         { text: "Деплой на Vercel", included: true },
-        { text: "Доступ к закрытому чату комьюнити", included: true },
       ],
       isCurrent: currentPlan === "CREATOR",
       badge: "хит продаж",
@@ -118,10 +117,10 @@ export function PricingClient({ currentPlan, isAuthenticated }: PricingClientPro
         { text: "Быстрая скорость работы", included: true },
         { text: "Экспорт кода (ZIP)", included: true },
         { text: "Деплой на Vercel", included: true },
-        { text: "Доступ к закрытому чату комьюнити", included: true },
       ],
       isCurrent: currentPlan === "PRO",
       badge: "выгодно",
+      pro: true,
       icon: Crown,
     },
     {
@@ -137,7 +136,6 @@ export function PricingClient({ currentPlan, isAuthenticated }: PricingClientPro
         { text: "Максимальный приоритет скорости", included: true },
         { text: "Экспорт кода (ZIP)", included: true },
         { text: "Деплой на Vercel", included: true },
-        { text: "Доступ к закрытому чату комьюнити", included: true },
       ],
       isCurrent: currentPlan === "STUDIO",
       icon: Building2,
@@ -155,7 +153,6 @@ export function PricingClient({ currentPlan, isAuthenticated }: PricingClientPro
         { text: "Максимальный приоритет скорости", included: true },
         { text: "Экспорт кода (ZIP)", included: true },
         { text: "Деплой на Vercel", included: true },
-        { text: "Доступ к закрытому чату комьюнити", included: true },
       ],
       isCurrent: currentPlan === "AGENCY",
       icon: Building2,
@@ -202,18 +199,11 @@ export function PricingClient({ currentPlan, isAuthenticated }: PricingClientPro
       {/* Header */}
       <div className="text-center mb-12 mt-8 md:mt-16">
         <h1 
-          className="text-4xl md:text-5xl font-bold tracking-tight mb-3"
-          style={{
-            background: 'linear-gradient(to bottom, #fff, #cbd5e1)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            textShadow: '0 10px 30px rgba(0,0,0,0.5)'
-          }}
+          className="text-4xl md:text-5xl font-bold tracking-tight mb-3 text-white"
         >
           Простые и прозрачные тарифы
         </h1>
-        <p className="text-slate-400 text-lg">Выберите план, который подходит именно вам</p>
-        <p className="text-slate-500 text-sm mt-2">
+        <p className="text-slate-400 text-sm mt-2">
           Все подписки действуют 30 дней. При продлении до окончания — остаток переносится
         </p>
       </div>
@@ -228,18 +218,22 @@ export function PricingClient({ currentPlan, isAuthenticated }: PricingClientPro
               className={`
                 relative flex flex-col rounded-[20px] p-5
                 transition-all duration-300 hover:translate-y-[-4px]
-                ${plan.popular ? 'z-10 scale-[1.02]' : ''}
+                ${(plan.popular || (plan as any).pro) ? 'z-10 scale-[1.02]' : ''}
               `}
               style={{
-                background: plan.popular 
-                  ? 'linear-gradient(180deg, rgba(25, 15, 10, 0.95) 0%, rgba(15, 8, 5, 0.98) 100%)'
-                  : 'linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%)',
+                background: (plan.popular || (plan as any).pro)
+                  ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%)'
+                  : 'linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.03) 100%)',
                 backdropFilter: 'blur(20px)',
                 border: plan.popular 
-                  ? '1px solid rgba(249, 115, 22, 0.4)' 
-                  : '1px solid rgba(255, 255, 255, 0.08)',
+                  ? '1.5px solid rgba(249, 115, 22, 0.65)'
+                  : (plan as any).pro
+                  ? '1.5px solid rgba(34, 197, 94, 0.65)'
+                  : '1px solid rgba(255, 255, 255, 0.16)',
                 boxShadow: plan.popular
-                  ? '0 0 50px -10px rgba(249, 115, 22, 0.25), 0 20px 40px -10px rgba(0,0,0,0.5)'
+                  ? '0 0 50px -10px rgba(249, 115, 22, 0.3), 0 20px 40px -10px rgba(0,0,0,0.5)'
+                  : (plan as any).pro
+                  ? '0 0 50px -10px rgba(34, 197, 94, 0.3), 0 20px 40px -10px rgba(0,0,0,0.5)'
                   : '0 20px 40px -10px rgba(0,0,0,0.3)',
               }}
             >

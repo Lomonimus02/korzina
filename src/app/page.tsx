@@ -5,7 +5,7 @@ import { LandingHero } from "@/components/landing-hero";
 import { Footer } from "@/components/footer";
 import { ShowcaseGrid } from "@/components/showcase-grid";
 import { NewsGrid } from "@/components/news-grid";
-import { Code2 } from "lucide-react";
+import { Code2, User } from "lucide-react";
 import prisma from "@/lib/db";
 
 const ADMIN_EMAIL = "bvvbvdvdc@gmail.com";
@@ -65,8 +65,8 @@ export default async function LandingPage() {
   return (
     <div className="min-h-screen text-white flex flex-col overflow-x-hidden">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-xl border-b border-white/5 md:border-white/10 md:bg-black/40">
-        <div className="container flex h-16 max-w-screen-2xl items-center justify-between px-4 md:px-8 mx-auto">
+      <header className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-4xl">
+        <div className="flex h-14 items-center justify-between px-5 rounded-xl border border-white/[0.12] backdrop-blur-2xl" style={{ background: "rgba(8,8,14,0.70)" }}>
           <div className="flex items-center gap-2 font-bold text-xl">
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center text-white">
               <Code2 className="h-5 w-5" />
@@ -80,11 +80,17 @@ export default async function LandingPage() {
 
           <div className="flex items-center gap-4">
             {session?.user ? (
-              <Link href="/new">
-                <Button variant="secondary" size="sm" className="bg-white text-black hover:bg-white/90">
-                  Перейти в панель
-                </Button>
-              </Link>
+              <>
+                <Link href="/account" className="flex items-center gap-1.5 text-sm font-medium text-white/70 hover:text-white transition-colors">
+                  <User className="h-4 w-4" />
+                  <span className="hidden sm:inline">Аккаунт</span>
+                </Link>
+                <Link href="/new">
+                  <Button variant="secondary" size="sm" className="bg-white text-black hover:bg-white/90">
+                    Перейти в панель
+                  </Button>
+                </Link>
+              </>
             ) : (
               <>
                 <Link href="/login">
@@ -104,8 +110,8 @@ export default async function LandingPage() {
       </header>
 
       <main className="flex flex-col items-center">
-        {/* Hero Section - Takes most of viewport, shows only templates title */}
-        <section className="h-[calc(100vh-80px)] w-full flex flex-col pt-16">
+        {/* Hero Section - full viewport, header floats on top */}
+        <section className="h-screen w-full flex flex-col">
           <LandingHero user={session?.user} />
         </section>
         

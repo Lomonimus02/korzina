@@ -141,14 +141,14 @@ export function ChatSuggestions({ onSelect, className, buttonClassName }: ChatSu
             onClick={() => { trackClick("suggestion_click"); onSelect(item.prompt); }}
             className={cn(
               "rounded-full h-auto py-2 px-4 text-xs sm:text-sm font-normal cursor-pointer",
-              "bg-black/5 dark:bg-white/5",
-              "border-black/5 dark:border-white/10",
-              "text-muted-foreground hover:text-foreground",
-              "hover:bg-black/10 dark:hover:bg-white/10",
-              "hover:border-black/10 dark:hover:border-white/20",
+              "backdrop-blur-xl",
+              "border border-white/[0.12]",
+              "text-white/65 hover:text-white",
+              "hover:border-white/25",
               "transition-all duration-300",
               buttonClassName
             )}
+            style={{ background: "rgba(6,6,10,0.82)" }}
           >
             <Icon className="w-3 h-3 mr-2 text-orange-400/80" />
             {item.label}
