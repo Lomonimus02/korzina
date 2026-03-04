@@ -147,7 +147,8 @@ export const authOptions: NextAuthOptions = {
   },
   events: {
     // Для НОВЫХ OAuth пользователей - только верификация
-    // НЕ трогаем credits! Они уже установлены по умолчанию в схеме (@default(10))
+    // НЕ трогаем credits! FREE-план работает через счётчики dailyGenerations/monthlyGenerations (3/день, 15/месяц)
+    // credits @default(0) в схеме — используется только для платных планов
     async createUser({ user }) {
       await prisma.user.update({
         where: { id: user.id },

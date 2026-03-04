@@ -64,6 +64,16 @@ export default async function LandingPage() {
 
   return (
     <div className="min-h-screen text-white flex flex-col overflow-x-hidden">
+      {/* Fixed gradient background — stays pinned while content scrolls */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: -1,
+          background: "linear-gradient(to bottom, rgba(9,4,20,0.75) 0%, transparent 25%), radial-gradient(ellipse 80% 70% at 0% 50%, #0284c7 0%, #0ea5e9 20%, #38bdf8 40%, transparent 70%), radial-gradient(ellipse 75% 65% at 100% 0%, #ff4500 0%, #ff6a00 15%, #ff9500 30%, transparent 55%), radial-gradient(ellipse 65% 60% at 92% 35%, #7dd3fc 0%, #38bdf8 25%, #0ea5e9 50%, transparent 70%), radial-gradient(ellipse 70% 60% at 0% 100%, #ff4500 0%, #ff6a00 15%, #ff9500 30%, transparent 55%), radial-gradient(ellipse 90% 80% at 60% 65%, #7c3aed 0%, #a21caf 35%, #db2777 60%, transparent 100%), radial-gradient(ellipse 80% 70% at 100% 100%, #000002 0%, #010005 30%, transparent 70%), #010007",
+        }}
+      />
       {/* Header */}
       <header className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-4xl">
         <div className="flex h-14 items-center justify-between px-5 rounded-xl border border-white/[0.12] backdrop-blur-2xl" style={{ background: "rgba(8,8,14,0.70)" }}>

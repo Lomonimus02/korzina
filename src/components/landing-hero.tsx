@@ -133,12 +133,10 @@ export function LandingHero({ user }: LandingHeroProps) {
   const hasContent = prompt.trim().length > 0 || images.length > 0;
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center relative px-4 pb-24 overflow-hidden"
-      style={{ background: "radial-gradient(ellipse 80% 70% at 0% 50%, #0284c7 0%, #0ea5e9 20%, #38bdf8 40%, transparent 70%), radial-gradient(ellipse 75% 65% at 100% 0%, #ff4500 0%, #ff6a00 15%, #ff9500 30%, transparent 55%), radial-gradient(ellipse 65% 60% at 92% 35%, #7dd3fc 0%, #38bdf8 25%, #0ea5e9 50%, transparent 70%), radial-gradient(ellipse 70% 60% at 0% 100%, #ff4500 0%, #ff6a00 15%, #ff9500 30%, transparent 55%), radial-gradient(ellipse 90% 80% at 60% 65%, #7c3aed 0%, #a21caf 35%, #db2777 60%, transparent 100%), radial-gradient(ellipse 80% 70% at 100% 100%, #000002 0%, #010005 30%, transparent 70%), #010007" }}
-    >
+    <div className="flex-1 flex flex-col items-center justify-center relative px-4 pb-24 overflow-hidden">
 
       {/* ── Animated blobs for depth & motion ────────────────────────────── */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0" style={{ WebkitMaskImage: "linear-gradient(to bottom, black 60%, transparent 100%)", maskImage: "linear-gradient(to bottom, black 60%, transparent 100%)" }}>
 
         {/* top-left indigo pulse */}
         <motion.div
@@ -160,11 +158,6 @@ export function LandingHero({ user }: LandingHeroProps) {
           style={{ width: "75vw", height: "75vw", bottom: "-15%", right: "-10%", background: "radial-gradient(circle, rgba(236,72,153,0.45) 0%, transparent 65%)", filter: "blur(40px)" }}
           animate={{ x: [0, -35, 20, 0], y: [0, -25, 18, 0] }}
           transition={{ duration: 22, repeat: Infinity, ease: "linear", delay: 4 }}
-        />
-        {/* subtle top fade so text stays readable */}
-        <div
-          className="absolute inset-x-0 top-0 pointer-events-none"
-          style={{ height: "35%", background: "linear-gradient(to bottom, rgba(9,4,20,0.75) 0%, transparent 100%)" }}
         />
       </div>
 

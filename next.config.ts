@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // 1. Отключаем строгий режим (мы это уже делали, но проверим)
   reactStrictMode: false,
+
+  // esbuild — нативный модуль, не бандлим его
+  serverExternalPackages: ["esbuild"],
   
   // 2. ВАЖНО: Заставляем Next.js правильно обрабатывать Sandpack
   transpilePackages: ["@codesandbox/sandpack-react"],

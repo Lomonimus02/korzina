@@ -31,6 +31,15 @@ export default async function AccountPage() {
     },
   });
 
+  // Calculate remaining free generations for FREE plan users
+  const FREE_DAILY_LIMIT = 3;
+  const FREE_MONTHLY_LIMIT = 15;
+  const now = new Date();
+  const dailyUsed = user && (!user.dailyResetAt || now >= user.dailyResetAt) ? 0 : (user?.dailyGenerations || 0);
+  const monthlyUsed = user && (!user.monthlyResetAt || now >= user.monthlyResetAt) ? 0 : (user?.monthlyGenerations || 0);
+  const remainingDaily = Math.max(0, FREE_DAILY_LIMIT - dailyUsed);
+  const remainingMonthly = Math.max(0, FREE_MONTHLY_LIMIT - monthlyUsed);
+
   if (!user) {
     return redirect("/login");
   }
@@ -80,20 +89,41 @@ export default async function AccountPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CreditCard className="h-5 w-5" />
-                  Кредиты
+                  {user.plan === 'FREE' ? 'Бесплатный план' : 'Кредиты'}
                 </CardTitle>
-                <CardDescription>Ваши доступные кредиты для генераций</CardDescription>
+                <CardDescription>
+                  {user.plan === 'FREE'
+                    ? '3 генерации в день, максимум 15 в месяц'
+                    : 'Ваши доступные кредиты для генераций'}
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-4xl font-bold">{user.credits}</span>
-                    <span className="text-muted-foreground ml-2">кредитов</span>
+                {user.plan === 'FREE' ? (
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <div>
+                        <span className="text-4xl font-bold">{remainingMonthly}</span>
+                        <span className="text-muted-foreground ml-2">ген. осталось в месяце</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Сегодня: {remainingDaily} из {FREE_DAILY_LIMIT} доступно
+                      </p>
+                    </div>
+                    <Button asChild>
+                      <Link href="/pricing">Upgrade</Link>
+                    </Button>
                   </div>
-                  <Button asChild>
-                    <Link href="/pricing">Пополнить</Link>
-                  </Button>
-                </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-4xl font-bold">{user.credits}</span>
+                      <span className="text-muted-foreground ml-2">кредитов</span>
+                    </div>
+                    <Button asChild>
+                      <Link href="/pricing">Пополнить</Link>
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

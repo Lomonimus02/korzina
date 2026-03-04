@@ -105,6 +105,11 @@ export async function POST(req: Request) {
         const planConfig = plan ? YOOKASSA_PLANS[plan as keyof typeof YOOKASSA_PLANS] : null;
         if (planConfig) {
           creditsToAdd = planConfig.credits;
+        } else if (payment.creditsAmount) {
+          // Fallback: если план не найден в конфиге, берём creditsAmount из записи платежа
+          // (защита от переименований планов / миграций)
+          console.warn("⚠️ [YooKassa Webhook] План не найден в конфиге, используем creditsAmount из платежа:", payment.creditsAmount);
+          creditsToAdd = payment.creditsAmount;
         }
       } else {
         // Для пакетов - используем lifetimeCredits
@@ -117,6 +122,16 @@ export async function POST(req: Request) {
           creditsToAdd = payment.creditsAmount;
           isLifetimeCredits = true;
         }
+      }
+
+      // Защита: если кредиты всё ещё 0 для оплаченного платежа — критическая ошибка, логируем
+      if (creditsToAdd === 0) {
+        console.error("🚨 [YooKassa Webhook] ВНИМАНИЕ: creditsToAdd=0 для оплаченного платежа!", {
+          paymentId: payment.id,
+          plan,
+          purchaseType,
+          creditsAmount: payment.creditsAmount,
+        });
       }
 
       console.log("🎁 [YooKassa Webhook] Кредитов к начислению:", creditsToAdd, "Тип:", purchaseType, "Lifetime:", isLifetimeCredits);

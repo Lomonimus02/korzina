@@ -14,9 +14,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 interface SidebarClientProps {
   user: any;
+  remainingDaily?: number;
+  remainingMonthly?: number;
+  freeDailyLimit?: number;
+  freeMonthlyLimit?: number;
 }
 
-export function SidebarClient({ user }: SidebarClientProps) {
+export function SidebarClient({ user, remainingDaily = 3, remainingMonthly = 15, freeDailyLimit = 3, freeMonthlyLimit = 15 }: SidebarClientProps) {
   const { trackClick } = useAnalytics();
   const [isCollapsed, setIsCollapsed] = useState(true);
 
@@ -100,13 +104,13 @@ export function SidebarClient({ user }: SidebarClientProps) {
       </div>
       
       {/* Navigation / History */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {!isCollapsed && (
           <div className="px-6 pb-2 pt-2 animate-in fade-in duration-300">
             <span className="text-[10px] font-medium text-zinc-600 uppercase tracking-wider">Недавние</span>
           </div>
         )}
-        <ScrollArea className="flex-1 px-3">
+        <ScrollArea className="flex-1 px-3 overflow-hidden">
           {isCollapsed ? (
              <div className="flex flex-col gap-2 items-center pt-2">
                 {user.chats.slice(0, 5).map((chat: any) => (
@@ -134,12 +138,16 @@ export function SidebarClient({ user }: SidebarClientProps) {
       </div>
       
       {/* Footer - Minimal */}
-      <div className={cn("p-3 mt-auto space-y-1", isCollapsed ? "items-center flex flex-col" : "")}>
+      <div className={cn("p-3 space-y-1 shrink-0", isCollapsed ? "items-center flex flex-col" : "")}>
         {!isCollapsed && (
           <SidebarCredits 
             initialCredits={user.credits} 
             initialLifetimeCredits={user.lifetimeCredits || 0}
             initialPlan={user.plan}
+            initialRemainingDaily={remainingDaily}
+            initialRemainingMonthly={remainingMonthly}
+            freeDailyLimit={freeDailyLimit}
+            freeMonthlyLimit={freeMonthlyLimit}
           />
         )}
         <UserProfile email={user.email} plan={user.plan} isCollapsed={isCollapsed} />

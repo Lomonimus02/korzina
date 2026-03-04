@@ -8,7 +8,7 @@ interface FooterProps {
 
 export function Footer({ className }: FooterProps) {
   return (
-    <footer className={cn("w-full bg-zinc-950 border-t border-zinc-800/50 py-12 px-4 md:px-6 mt-12 md:mt-16", className)}>
+    <footer className={cn("w-full bg-zinc-950 py-12 px-4 md:px-6 mt-12 md:mt-16", className)}>
       <div className="container mx-auto max-w-full px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand Column */}

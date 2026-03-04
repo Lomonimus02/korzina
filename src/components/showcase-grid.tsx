@@ -112,7 +112,7 @@ export function ShowcaseGrid({ items: initialItems, isLoggedIn, isAdmin = false 
   return (
     <>
       {/* Card-like container as separate block - 80% width on desktop, with side margins on mobile */}
-      <div className="relative w-[calc(100%-2rem)] md:w-[85%] lg:w-[80%] mx-auto bg-zinc-950 rounded-[2.5rem] border border-zinc-800/50">
+      <div className="relative w-[calc(100%-2rem)] md:w-[85%] lg:w-[80%] mx-auto rounded-[2.5rem]">
         <section className="w-full px-6 md:px-10 py-10">
           <div className="mb-8">
             <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">

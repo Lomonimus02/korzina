@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
 import { NextResponse } from "next/server";
+import { FREE_PLAN_LIMITS } from "@/lib/yookassa-types";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,8 @@ export async function GET() {
       plan: true,
       dailyGenerations: true,
       monthlyGenerations: true,
+      dailyResetAt: true,
+      monthlyResetAt: true,
     },
   });
 
@@ -27,10 +30,25 @@ export async function GET() {
     return new NextResponse("User not found", { status: 404 });
   }
 
-  // Для FREE плана возвращаем оставшиеся генерации
+  const now = new Date();
+
+  // Для FREE плана вычисляем оставшиеся генерации с учётом сброса счётчиков
+  let dailyUsed = user.dailyGenerations || 0;
+  let monthlyUsed = user.monthlyGenerations || 0;
+
+  if (!user.dailyResetAt || now >= user.dailyResetAt) {
+    dailyUsed = 0;
+  }
+  if (!user.monthlyResetAt || now >= user.monthlyResetAt) {
+    monthlyUsed = 0;
+  }
+
+  const remainingDaily = Math.max(0, FREE_PLAN_LIMITS.dailyGenerations - dailyUsed);
+  const remainingMonthly = Math.max(0, FREE_PLAN_LIMITS.monthlyGenerations - monthlyUsed);
+
   // Для платных планов - сумму credits + lifetimeCredits
   const totalCredits = user.plan === 'FREE' 
-    ? 0 
+    ? remainingMonthly
     : (user.credits || 0) + (user.lifetimeCredits || 0);
 
   return NextResponse.json({ 
@@ -38,7 +56,11 @@ export async function GET() {
     regularCredits: user.credits || 0,
     lifetimeCredits: user.lifetimeCredits || 0,
     plan: user.plan,
-    dailyGenerations: user.dailyGenerations || 0,
-    monthlyGenerations: user.monthlyGenerations || 0,
+    dailyGenerations: dailyUsed,
+    monthlyGenerations: monthlyUsed,
+    remainingDaily,
+    remainingMonthly,
+    freeDailyLimit: FREE_PLAN_LIMITS.dailyGenerations,
+    freeMonthlyLimit: FREE_PLAN_LIMITS.monthlyGenerations,
   });
 }

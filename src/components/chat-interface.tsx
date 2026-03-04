@@ -658,7 +658,12 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
         const errorMessage = errorData.error || response.statusText || "Не удалось отправить сообщение";
         
         if (response.status === 403) {
-          // We handle the redirect/toast in the catch block or UI, but here we just throw a specific error
+          const errMsg = errorData.error || "";
+          if (errMsg.includes("Дневной") || errMsg.toLowerCase().includes("daily")) {
+            throw new Error("Дневной лимит исчерпан");
+          } else if (errMsg.includes("Месячный") || errMsg.toLowerCase().includes("monthly")) {
+            throw new Error("Месячный лимит исчерпан");
+          }
           throw new Error("Недостаточно кредитов");
         }
         throw new Error(errorMessage);
@@ -1054,7 +1059,7 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
             <p className="font-bold text-sm">Error</p>
             <p className="text-xs opacity-90">{error}</p>
           </div>
-          {error === "Недостаточно кредитов" && (
+          {(error === "Недостаточно кредитов" || error === "Дневной лимит исчерпан" || error === "Месячный лимит исчерпан") && (
             <Button asChild variant="secondary" size="sm" className="w-full mt-2 bg-red-500/20 hover:bg-red-500/30 text-red-200 border-none" onClick={() => trackClick("upgrade_plan")}>
               <Link href="/pricing">Upgrade Plan</Link>
             </Button>

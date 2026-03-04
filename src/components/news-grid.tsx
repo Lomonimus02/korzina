@@ -70,7 +70,7 @@ export function NewsGrid({ items: initialItems, isAdmin = false }: NewsGridProps
   return (
     <>
       {/* News Section */}
-      <div className="relative w-[calc(100%-2rem)] md:w-[85%] lg:w-[80%] mx-auto bg-zinc-950 rounded-[2.5rem] border border-zinc-800/50 mt-8">
+      <div className="relative w-[calc(100%-2rem)] md:w-[85%] lg:w-[80%] mx-auto rounded-[2.5rem] mt-8">
         <section className="w-full px-6 md:px-10 py-10">
           <div className="flex items-center justify-between mb-8">
             <div>
