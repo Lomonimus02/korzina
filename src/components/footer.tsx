@@ -14,7 +14,7 @@ export function Footer({ className }: FooterProps) {
           {/* Brand Column */}
           <div className="col-span-1">
             <Link href="/" className="flex items-center gap-2 font-bold text-xl text-white mb-4">
-              <img src="/logo.svg" alt="Moonely" className="h-8 w-8" />
+              <img src="/logo.svg" alt="Moonely" className="h-24 w-24" />
               <span>Moonely</span>
             </Link>
             <p className="text-sm text-gray-400 mb-4">

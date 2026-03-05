@@ -44,8 +44,8 @@ export function SidebarClient({ user, remainingDaily = 3, remainingMonthly = 15,
 
       <div className="flex flex-col h-full w-full overflow-hidden">
       {/* Header - Minimal Logo */}
-      <div className={cn("p-4 pb-2 flex items-center", isCollapsed ? "justify-center" : "")}>
-        <Link href="/" className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors group/logo">
+      <div className={cn("p-2 pb-2 flex items-center", isCollapsed ? "justify-center" : "")}>
+        <Link href="/" className="flex items-center gap-2 px-1 py-1.5 rounded-lg hover:bg-white/5 transition-colors group/logo">
           <div className="w-6 h-6 rounded bg-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover/logo:text-indigo-300 transition-colors shrink-0">
             <Sparkles size={14} />
           </div>
