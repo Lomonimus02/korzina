@@ -76,10 +76,10 @@ export default async function LandingPage() {
       />
       {/* Header */}
       <header className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-4xl">
-        <div className="flex h-14 items-center justify-between pl-0 pr-5 rounded-xl border border-white/[0.12] backdrop-blur-2xl" style={{ background: "rgba(8,8,14,0.70)" }}>
-          <div className="flex items-center gap-0 font-bold text-xl -ml-2">
-            <img src="/logo.svg" alt="Moonely" className="h-24 w-24" />
-            <span className="-ml-4">Moonely</span>
+        <div className="flex h-14 items-center justify-between pl-4 pr-5 rounded-xl border border-white/[0.12] backdrop-blur-2xl" style={{ background: "rgba(8,8,14,0.70)" }}>
+          <div className="flex items-center gap-2 font-bold text-xl">
+            <img src="/logo.svg" alt="Moonely" className="h-8 w-8" />
+            <span>Moonely</span>
           </div>
           
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-white/70">
