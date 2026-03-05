@@ -14,9 +14,7 @@ export default function TermsPage() {
       <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/10">
         <div className="container flex h-16 max-w-screen-2xl items-center justify-between px-4 md:px-8 mx-auto">
           <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center text-white">
-              <Code2 className="h-5 w-5" />
-            </div>
+            <img src="/logo.svg" alt="Moonely" className="h-8 w-8" />
             <span>Moonely</span>
           </Link>
         </div>

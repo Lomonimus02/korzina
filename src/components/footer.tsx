@@ -14,9 +14,7 @@ export function Footer({ className }: FooterProps) {
           {/* Brand Column */}
           <div className="col-span-1">
             <Link href="/" className="flex items-center gap-2 font-bold text-xl text-white mb-4">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center text-white">
-                <Code2 className="h-5 w-5" />
-              </div>
+              <img src="/logo.svg" alt="Moonely" className="h-8 w-8" />
               <span>Moonely</span>
             </Link>
             <p className="text-sm text-gray-400 mb-4">
