@@ -966,19 +966,19 @@ ${filesContext}
       throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
     }
 
-    // Deduct credit/increment generation counter after successful start
-    if (user.plan === 'FREE') {
-      // For FREE plan - increment daily and monthly generation counters
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          dailyGenerations: { increment: 1 },
-          monthlyGenerations: { increment: 1 },
-          dailyResetAt: updatedUserData.dailyResetAt,
-          monthlyResetAt: updatedUserData.monthlyResetAt,
-        },
-      });
-    } else {
+    // Increment generation counters for ALL users (tracking purposes)
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        dailyGenerations: { increment: 1 },
+        monthlyGenerations: { increment: 1 },
+        dailyResetAt: updatedUserData.dailyResetAt,
+        monthlyResetAt: updatedUserData.monthlyResetAt,
+      },
+    });
+
+    // Deduct credits for paid plans
+    if (user.plan !== 'FREE') {
       // For paid plans - deduct credits (priority: lifetime credits first, then regular credits)
       if ((user.lifetimeCredits || 0) > 0) {
         // Use lifetime credits first

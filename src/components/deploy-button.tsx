@@ -116,26 +116,13 @@ export function DeployButton({ files, chatId, className }: DeployButtonProps) {
                   Опубликовать сайт
                 </DialogTitle>
                 <DialogDescription className="text-zinc-400">
-                  Сайт будет размещён в изолированной среде (Sandbox) и недоступен
-                  для поисковых систем.
+                  Ваш сайт будет опубликован и доступен по уникальной ссылке.
                 </DialogDescription>
               </DialogHeader>
 
               <div className="py-4 space-y-3">
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 space-y-1">
-                  <p className="text-sm font-medium text-amber-400 flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    Режим Sandbox
-                  </p>
-                  <p className="text-xs text-zinc-400">
-                    Индексация поисковиками отключена. На сайте будет отображаться
-                    плашка «Sandbox Mode — Not for public use».
-                  </p>
-                </div>
-
                 <div className="bg-zinc-800/50 rounded-lg p-4 text-xs text-zinc-400 space-y-1">
-                  <p>• Сайт публикуется в нашей изолированной среде (Moonely Sandbox).</p>
-                  <p>• Robots meta: <code className="bg-zinc-700 px-1 rounded">noindex, nofollow</code>.</p>
+                  <p>• Сайт публикуется на платформе Moonely.</p>
                   <p>• URL: <span className="text-zinc-300">{chatId}.deploy.moonely.ru</span></p>
                 </div>
               </div>
@@ -162,7 +149,7 @@ export function DeployButton({ files, chatId, className }: DeployButtonProps) {
                 <Loader2 className="h-8 w-8 text-indigo-400 animate-spin" />
               </div>
               <div className="text-center">
-                <p className="text-white font-medium">Подготовка Sandbox-среды...</p>
+                <p className="text-white font-medium">Подготовка публикации...</p>
                 <p className="text-sm text-zinc-500 mt-1">
                   Применяем защитный слой и регистрируем приложение
                 </p>
@@ -207,18 +194,7 @@ export function DeployButton({ files, chatId, className }: DeployButtonProps) {
                   </div>
                 </div>
 
-                {/* Sandbox notice */}
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 space-y-1">
-                  <p className="text-sm font-medium text-amber-400 flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    Сайт размещён в песочнице (Sandbox)
-                  </p>
-                  <p className="text-xs text-zinc-400">
-                    Индексация поисковиками отключена. Сайт помечен плашкой
-                    «Sandbox Mode». Для полноценной публикации свяжитесь с командой
-                    Moonely.
-                  </p>
-                </div>
+
               </div>
 
               <DialogFooter>

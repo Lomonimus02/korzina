@@ -22,6 +22,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  Users,
+  Eye,
+  CalendarDays,
+  CalendarRange,
 } from "lucide-react";
 import {
   Table,
@@ -37,16 +41,19 @@ import type {
   ButtonClickRow,
   PageTimeRow,
   PromptRow,
+  VisitAnalytics,
+  DailyVisitRow,
 } from "@/app/actions/admin-stats";
 import { getIndividualPrompts } from "@/app/actions/admin-stats";
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 interface Props {
   metrics: KeyMetrics;
   costOverTime: CostOverTimeRow[];
   buttonClicks: ButtonClickRow[];
   pageTime: PageTimeRow[];
+  visitAnalytics: VisitAnalytics;
 }
 
 // ── Small helpers ────────────────────────────────────────────────────────────
@@ -140,8 +147,9 @@ export function AdminDashboardClient({
   costOverTime,
   buttonClicks,
   pageTime,
+  visitAnalytics,
 }: Props) {
-  const [tab, setTab] = useState<"financials" | "behavior">("financials");
+  const [tab, setTab] = useState<"financials" | "behavior" | "visits">("visits");
 
   // ── Prompts table (client-side pagination via server action) ──
   const [prompts, setPrompts] = useState<PromptRow[]>([]);
@@ -227,6 +235,15 @@ export function AdminDashboardClient({
           <span className="flex items-center gap-1.5">
             <MousePointerClick className="h-3.5 w-3.5" />
             Behavior
+          </span>
+        </TabButton>
+        <TabButton
+          active={tab === "visits"}
+          onClick={() => setTab("visits")}
+        >
+          <span className="flex items-center gap-1.5">
+            <Users className="h-3.5 w-3.5" />
+            Visits
           </span>
         </TabButton>
       </div>
@@ -572,6 +589,136 @@ export function AdminDashboardClient({
                       className="text-center text-zinc-600 py-8"
                     >
                       No page view data yet
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════ VISITS TAB ═══════════════ */}
+      {tab === "visits" && (
+        <div className="space-y-8">
+          {/* Visit Summary Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            <MetricCard
+              icon={Eye}
+              label="Посещения сегодня"
+              value={visitAnalytics.todayVisitors.toLocaleString()}
+            />
+            <MetricCard
+              icon={CalendarDays}
+              label="Посещения за неделю"
+              value={visitAnalytics.weekVisitors.toLocaleString()}
+            />
+            <MetricCard
+              icon={CalendarRange}
+              label="Посещения за месяц"
+              value={visitAnalytics.monthVisitors.toLocaleString()}
+            />
+          </div>
+
+          {/* Daily Visitors Bar Chart */}
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-xl p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Users className="h-4 w-4 text-indigo-400" />
+              <h2 className="text-sm font-medium text-zinc-400">
+                Ежедневные посетители (последние 30 дней)
+              </h2>
+            </div>
+            {visitAnalytics.daily.length > 0 ? (
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={visitAnalytics.daily}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="rgba(255,255,255,0.04)"
+                  />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 10, fill: "#71717a" }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => {
+                      const d = new Date(v);
+                      return `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+                    }}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: "#71717a" }}
+                    tickLine={false}
+                    axisLine={false}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    content={({ active, payload, label }: any) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <div className="rounded-lg border border-white/10 bg-zinc-900/95 backdrop-blur-xl px-3 py-2 text-xs shadow-xl">
+                          <p className="text-zinc-400 mb-1">{label}</p>
+                          <p className="text-indigo-300 font-medium">
+                            Посетители: {payload[0]?.value}
+                          </p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Bar
+                    dataKey="uniqueVisitors"
+                    name="Посетители"
+                    fill="#818cf8"
+                    radius={[4, 4, 0, 0]}
+                    barSize={24}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[320px] flex items-center justify-center text-zinc-600 text-sm">
+                Нет данных о посещениях
+              </div>
+            )}
+          </div>
+
+          {/* Daily Table */}
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-white/[0.06]">
+              <h2 className="text-sm font-medium text-zinc-400">
+                Посещения по дням
+              </h2>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="border-white/[0.06] hover:bg-transparent">
+                  <TableHead className="text-zinc-500 text-xs font-medium">
+                    Дата
+                  </TableHead>
+                  <TableHead className="text-zinc-500 text-xs font-medium text-right">
+                    Уник. посетители
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...visitAnalytics.daily].reverse().map((d) => (
+                  <TableRow
+                    key={d.date}
+                    className="border-white/[0.04] hover:bg-white/[0.02]"
+                  >
+                    <TableCell className="text-xs text-zinc-300 font-mono">
+                      {d.date}
+                    </TableCell>
+                    <TableCell className="text-xs text-zinc-300 text-right tabular-nums font-medium">
+                      {d.uniqueVisitors.toLocaleString()}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {visitAnalytics.daily.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={2}
+                      className="text-center text-zinc-600 py-8"
+                    >
+                      Нет данных о посещениях
                     </TableCell>
                   </TableRow>
                 )}

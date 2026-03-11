@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   ChevronLeft,
   ChevronRight,
   Loader2,
   MessageSquare,
+  Search,
+  X,
 } from "lucide-react";
 import {
   Table,
@@ -33,6 +35,24 @@ function fmt$(v: number) {
 }
 
 export default function AdminPromptsPage() {
+  // ── Search ──
+  const [searchEmail, setSearchEmail] = useState("");
+  const [activeSearch, setActiveSearch] = useState("");
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const handleSearchChange = (value: string) => {
+    setSearchEmail(value);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => {
+      setActiveSearch(value);
+    }, 500);
+  };
+
+  const clearSearch = () => {
+    setSearchEmail("");
+    setActiveSearch("");
+  };
+
   // ── Individual Prompts ──
   const [prompts, setPrompts] = useState<PromptRow[]>([]);
   const [promptPage, setPromptPage] = useState(1);
@@ -40,10 +60,10 @@ export default function AdminPromptsPage() {
   const [promptPages, setPromptPages] = useState(1);
   const [loadingPrompts, setLoadingPrompts] = useState(true);
 
-  const loadPrompts = useCallback(async (page: number) => {
+  const loadPrompts = useCallback(async (page: number, email: string) => {
     setLoadingPrompts(true);
     try {
-      const res = await getIndividualPrompts(page, 20);
+      const res = await getIndividualPrompts(page, 20, email);
       setPrompts(res.data);
       setPromptTotal(res.total);
       setPromptPages(res.totalPages);
@@ -61,10 +81,10 @@ export default function AdminPromptsPage() {
   const [chatAvgPages, setChatAvgPages] = useState(1);
   const [loadingAvgs, setLoadingAvgs] = useState(true);
 
-  const loadChatAvgs = useCallback(async (page: number) => {
+  const loadChatAvgs = useCallback(async (page: number, email: string) => {
     setLoadingAvgs(true);
     try {
-      const res = await getChatAverages(page, 50);
+      const res = await getChatAverages(page, 50, email);
       setChatAvgs(res.data);
       setChatAvgPage(res.page);
       setChatAvgPages(res.totalPages);
@@ -81,10 +101,10 @@ export default function AdminPromptsPage() {
   const [chatTotalPages, setChatTotalPages] = useState(1);
   const [loadingTotals, setLoadingTotals] = useState(true);
 
-  const loadChatTotals = useCallback(async (page: number) => {
+  const loadChatTotals = useCallback(async (page: number, email: string) => {
     setLoadingTotals(true);
     try {
-      const res = await getUserChatTotals(page, 50);
+      const res = await getUserChatTotals(page, 50, email);
       setChatTotals(res.data);
       setChatTotalPage(res.page);
       setChatTotalPages(res.totalPages);
@@ -99,17 +119,25 @@ export default function AdminPromptsPage() {
   const [firstPrompts, setFirstPrompts] = useState<FirstPromptRow[]>([]);
   const [loadingFirst, setLoadingFirst] = useState(true);
 
+  // Reload when search changes
   useEffect(() => {
-    loadPrompts(1);
-    loadChatAvgs(1);
-    loadChatTotals(1);
+    loadPrompts(1, activeSearch);
+    loadChatAvgs(1, activeSearch);
+    loadChatTotals(1, activeSearch);
     getFirstPromptStats()
       .then(setFirstPrompts)
       .catch(console.error)
       .finally(() => setLoadingFirst(false));
-  }, [loadPrompts, loadChatAvgs, loadChatTotals]);
+  }, [activeSearch, loadPrompts, loadChatAvgs, loadChatTotals]);
 
   const [tab, setTab] = useState<"individual" | "averages" | "totals" | "first">("individual");
+
+  // Filter first prompts by email client-side
+  const filteredFirstPrompts = activeSearch
+    ? firstPrompts.filter((fp) =>
+        fp.userEmail.toLowerCase().includes(activeSearch.toLowerCase())
+      )
+    : firstPrompts;
 
   return (
     <div className="p-6 md:p-8 space-y-6 max-w-[1440px] mx-auto">
@@ -121,6 +149,26 @@ export default function AdminPromptsPage() {
         <p className="text-sm text-zinc-500 mt-1">
           Detailed token and cost data for every prompt, chat, and user.
         </p>
+      </div>
+
+      {/* Search */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+        <input
+          type="text"
+          value={searchEmail}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          placeholder="Поиск по email аккаунта..."
+          className="w-full pl-9 pr-9 py-2.5 text-sm bg-white/[0.03] border border-white/[0.06] rounded-xl text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-colors"
+        />
+        {searchEmail && (
+          <button
+            onClick={clearSearch}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       {/* Tab Buttons */}
@@ -177,7 +225,7 @@ export default function AdminPromptsPage() {
               {prompts.length === 0 && <EmptyRow cols={7} />}
             </TableBody>
           </Table>
-          <Pagination page={promptPage} total={promptPages} onNavigate={loadPrompts} />
+          <Pagination page={promptPage} total={promptPages} onNavigate={(p) => loadPrompts(p, activeSearch)} />
         </Section>
       )}
 
@@ -209,7 +257,7 @@ export default function AdminPromptsPage() {
               {chatAvgs.length === 0 && <EmptyRow cols={6} />}
             </TableBody>
           </Table>
-          <Pagination page={chatAvgPage} total={chatAvgPages} onNavigate={loadChatAvgs} />
+          <Pagination page={chatAvgPage} total={chatAvgPages} onNavigate={(p) => loadChatAvgs(p, activeSearch)} />
         </Section>
       )}
 
@@ -241,7 +289,7 @@ export default function AdminPromptsPage() {
               {chatTotals.length === 0 && <EmptyRow cols={6} />}
             </TableBody>
           </Table>
-          <Pagination page={chatTotalPage} total={chatTotalPages} onNavigate={loadChatTotals} />
+          <Pagination page={chatTotalPage} total={chatTotalPages} onNavigate={(p) => loadChatTotals(p, activeSearch)} />
         </Section>
       )}
 
@@ -260,7 +308,7 @@ export default function AdminPromptsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {firstPrompts.map((fp) => (
+              {filteredFirstPrompts.map((fp) => (
                 <TableRow key={fp.chatId} className="border-white/[0.04] hover:bg-white/[0.02]">
                   <Td truncate>{fp.userEmail}</Td>
                   <Td truncate>{fp.chatTitle}</Td>
@@ -270,7 +318,7 @@ export default function AdminPromptsPage() {
                   <Td dim>{new Date(fp.createdAt).toLocaleDateString()}</Td>
                 </TableRow>
               ))}
-              {firstPrompts.length === 0 && <EmptyRow cols={6} />}
+              {filteredFirstPrompts.length === 0 && <EmptyRow cols={6} />}
             </TableBody>
           </Table>
         </Section>

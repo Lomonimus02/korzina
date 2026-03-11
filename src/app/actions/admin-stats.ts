@@ -32,12 +32,21 @@ export interface PromptRow {
   userEmail: string;
 }
 
-export async function getIndividualPrompts(page = 1, pageSize = 30) {
+export async function getIndividualPrompts(page = 1, pageSize = 30, searchEmail = "") {
   await requireAdmin();
+
+  const whereClause: any = { role: "assistant" };
+  if (searchEmail.trim()) {
+    whereClause.chat = {
+      user: {
+        email: { contains: searchEmail.trim(), mode: "insensitive" },
+      },
+    };
+  }
 
   const [rows, total] = await Promise.all([
     prisma.message.findMany({
-      where: { role: "assistant" },
+      where: whereClause,
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -58,7 +67,7 @@ export async function getIndividualPrompts(page = 1, pageSize = 30) {
         },
       },
     }),
-    prisma.message.count({ where: { role: "assistant" } }),
+    prisma.message.count({ where: whereClause }),
   ]);
 
   const data: PromptRow[] = rows.map((r: any) => ({
@@ -91,11 +100,19 @@ export interface ChatAvgRow {
   messageCount: number; // assistant messages only
 }
 
-export async function getChatAverages(page = 1, pageSize = 100) {
+export async function getChatAverages(page = 1, pageSize = 100, searchEmail = "") {
   await requireAdmin();
+
+  const whereClause: any = {};
+  if (searchEmail.trim()) {
+    whereClause.user = {
+      email: { contains: searchEmail.trim(), mode: "insensitive" },
+    };
+  }
 
   const [chats, totalChats] = await Promise.all([
     prisma.chat.findMany({
+      where: whereClause,
       select: {
         id: true,
         title: true,
@@ -113,7 +130,7 @@ export async function getChatAverages(page = 1, pageSize = 100) {
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
-    prisma.chat.count(),
+    prisma.chat.count({ where: whereClause }),
   ]);
 
   const data = chats.map((c: any) => {
@@ -150,11 +167,19 @@ export interface UserChatTotalRow {
   messageCount: number; // total messages (user + assistant)
 }
 
-export async function getUserChatTotals(page = 1, pageSize = 100) {
+export async function getUserChatTotals(page = 1, pageSize = 100, searchEmail = "") {
   await requireAdmin();
+
+  const whereClause: any = {};
+  if (searchEmail.trim()) {
+    whereClause.user = {
+      email: { contains: searchEmail.trim(), mode: "insensitive" },
+    };
+  }
 
   const [chats, totalChats] = await Promise.all([
     prisma.chat.findMany({
+      where: whereClause,
       select: {
         id: true,
         title: true,
@@ -172,7 +197,7 @@ export async function getUserChatTotals(page = 1, pageSize = 100) {
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
-    prisma.chat.count(),
+    prisma.chat.count({ where: whereClause }),
   ]);
 
   const data = chats.map((c: any) => ({
@@ -201,11 +226,19 @@ export interface PromptsPerChatRow {
   promptCount: number;
 }
 
-export async function getPromptsPerChat(page = 1, pageSize = 100) {
+export async function getPromptsPerChat(page = 1, pageSize = 100, searchEmail = "") {
   await requireAdmin();
+
+  const whereClause: any = {};
+  if (searchEmail.trim()) {
+    whereClause.user = {
+      email: { contains: searchEmail.trim(), mode: "insensitive" },
+    };
+  }
 
   const [chats, totalChats] = await Promise.all([
     prisma.chat.findMany({
+      where: whereClause,
       select: {
         id: true,
         title: true,
@@ -219,7 +252,7 @@ export async function getPromptsPerChat(page = 1, pageSize = 100) {
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
-    prisma.chat.count(),
+    prisma.chat.count({ where: whereClause }),
   ]);
 
   const data = chats.map((c: any) => ({
@@ -394,6 +427,7 @@ export interface PageTimeRow {
 export async function getAvgTimeOnPage() {
   await requireAdmin();
 
+  // Exclude individual project pages (/c/[chatId]) — only count public pages
   const rows = await prisma.$queryRaw<
     { page: string; avgDuration: number; views: bigint }[]
   >`
@@ -404,6 +438,7 @@ export async function getAvgTimeOnPage() {
     FROM "AnalyticsEvent"
     WHERE type = 'PAGE_VIEW'
       AND meta->>'duration' IS NOT NULL
+      AND page NOT LIKE '/c/%'
     GROUP BY page
     ORDER BY "views" DESC
   `;
@@ -444,4 +479,375 @@ export async function getCostOverTime() {
     totalCost: Number(r.totalCost),
     messageCount: Number(r.messageCount),
   })) satisfies CostOverTimeRow[];
+}
+
+// ── 12. All Users (paginated, searchable, filterable) ────────────────────────
+
+export interface AdminUserRow {
+  id: string;
+  email: string;
+  name: string | null;
+  plan: string;
+  role: string;
+  credits: number;
+  lifetimeCredits: number;
+  dailyGenerations: number;
+  monthlyGenerations: number;
+  isVerified: boolean;
+  createdAt: string;
+  subscriptionEndAt: string | null;
+  totalChats: number;
+  totalCost: number;
+}
+
+export type UserPlanFilter = "ALL" | "FREE" | "PAID" | "STARTER" | "CREATOR" | "PRO" | "STUDIO" | "AGENCY";
+
+export async function getAllUsers(
+  page = 1,
+  pageSize = 20,
+  searchEmail = "",
+  planFilter: UserPlanFilter = "ALL"
+) {
+  await requireAdmin();
+
+  const whereClause: any = {};
+
+  if (searchEmail.trim()) {
+    whereClause.email = { contains: searchEmail.trim(), mode: "insensitive" };
+  }
+
+  if (planFilter === "PAID") {
+    whereClause.plan = { not: "FREE" };
+  } else if (planFilter === "FREE") {
+    whereClause.plan = "FREE";
+  } else if (planFilter !== "ALL") {
+    whereClause.plan = planFilter;
+  }
+
+  const [users, total] = await Promise.all([
+    prisma.user.findMany({
+      where: whereClause,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        plan: true,
+        role: true,
+        credits: true,
+        lifetimeCredits: true,
+        dailyGenerations: true,
+        monthlyGenerations: true,
+        isVerified: true,
+        createdAt: true,
+        subscriptionEndAt: true,
+        _count: {
+          select: { chats: true },
+        },
+        chats: {
+          select: {
+            messages: {
+              where: { role: "assistant" },
+              select: { cost: true },
+            },
+          },
+        },
+      },
+    }),
+    prisma.user.count({ where: whereClause }),
+  ]);
+
+  const data: AdminUserRow[] = users.map((u: any) => ({
+    id: u.id,
+    email: u.email,
+    name: u.name,
+    plan: u.plan,
+    role: u.role,
+    credits: u.credits,
+    lifetimeCredits: u.lifetimeCredits,
+    dailyGenerations: u.dailyGenerations,
+    monthlyGenerations: u.monthlyGenerations,
+    isVerified: u.isVerified,
+    createdAt: u.createdAt.toISOString(),
+    subscriptionEndAt: u.subscriptionEndAt?.toISOString() ?? null,
+    totalChats: u._count.chats,
+    totalCost: u.chats.reduce(
+      (sum: number, chat: any) =>
+        sum + chat.messages.reduce((s: number, m: any) => s + (m.cost ?? 0), 0),
+      0
+    ),
+  }));
+
+  return { data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
+}
+
+// ── 13. Single User Detail ───────────────────────────────────────────────────
+
+export interface AdminUserDetail {
+  id: string;
+  email: string;
+  name: string | null;
+  image: string | null;
+  plan: string;
+  role: string;
+  credits: number;
+  lifetimeCredits: number;
+  dailyGenerations: number;
+  monthlyGenerations: number;
+  isVerified: boolean;
+  createdAt: string;
+  subscriptionStartAt: string | null;
+  subscriptionEndAt: string | null;
+  dailyResetAt: string;
+  monthlyResetAt: string;
+  totalChats: number;
+  totalMessages: number;
+  totalCost: number;
+  totalPromptTokens: number;
+  totalCompletionTokens: number;
+  chats: {
+    id: string;
+    title: string;
+    createdAt: string;
+    messageCount: number;
+    totalCost: number;
+    totalPromptTokens: number;
+    totalCompletionTokens: number;
+  }[];
+  payments: {
+    id: string;
+    amount: number;
+    currency: string;
+    status: string;
+    plan: string | null;
+    purchaseType: string;
+    createdAt: string;
+  }[];
+  deployments: {
+    id: string;
+    projectName: string;
+    url: string | null;
+    status: string;
+    createdAt: string;
+  }[];
+}
+
+export async function getUserDetail(userId: string): Promise<AdminUserDetail | null> {
+  await requireAdmin();
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      image: true,
+      plan: true,
+      role: true,
+      credits: true,
+      lifetimeCredits: true,
+      dailyGenerations: true,
+      monthlyGenerations: true,
+      isVerified: true,
+      createdAt: true,
+      subscriptionStartAt: true,
+      subscriptionEndAt: true,
+      dailyResetAt: true,
+      monthlyResetAt: true,
+      chats: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          title: true,
+          createdAt: true,
+          messages: {
+            select: {
+              role: true,
+              promptTokens: true,
+              completionTokens: true,
+              cost: true,
+            },
+          },
+        },
+      },
+      payments: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          amount: true,
+          currency: true,
+          status: true,
+          plan: true,
+          purchaseType: true,
+          createdAt: true,
+        },
+      },
+      deployments: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          projectName: true,
+          url: true,
+          status: true,
+          createdAt: true,
+        },
+      },
+    },
+  });
+
+  if (!user) return null;
+
+  let totalMessages = 0;
+  let totalCost = 0;
+  let totalPromptTokens = 0;
+  let totalCompletionTokens = 0;
+
+  const chats = user.chats.map((c: any) => {
+    // Only count assistant messages to avoid double-counting (user + assistant = 2 per generation)
+    const assistantMsgs = c.messages.filter((m: any) => m.role === "assistant");
+    const chatCost = assistantMsgs.reduce((s: number, m: any) => s + (m.cost ?? 0), 0);
+    const chatPT = assistantMsgs.reduce((s: number, m: any) => s + (m.promptTokens ?? 0), 0);
+    const chatCT = assistantMsgs.reduce((s: number, m: any) => s + (m.completionTokens ?? 0), 0);
+    totalMessages += assistantMsgs.length;
+    totalCost += chatCost;
+    totalPromptTokens += chatPT;
+    totalCompletionTokens += chatCT;
+    return {
+      id: c.id,
+      title: c.title,
+      createdAt: c.createdAt.toISOString(),
+      messageCount: assistantMsgs.length,
+      totalCost: chatCost,
+      totalPromptTokens: chatPT,
+      totalCompletionTokens: chatCT,
+    };
+  });
+
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    image: user.image,
+    plan: user.plan,
+    role: user.role,
+    credits: user.credits,
+    lifetimeCredits: user.lifetimeCredits,
+    dailyGenerations: user.dailyGenerations,
+    monthlyGenerations: user.monthlyGenerations,
+    isVerified: user.isVerified,
+    createdAt: user.createdAt.toISOString(),
+    subscriptionStartAt: user.subscriptionStartAt?.toISOString() ?? null,
+    subscriptionEndAt: user.subscriptionEndAt?.toISOString() ?? null,
+    dailyResetAt: user.dailyResetAt.toISOString(),
+    monthlyResetAt: user.monthlyResetAt.toISOString(),
+    totalChats: user.chats.length,
+    totalMessages,
+    totalCost,
+    totalPromptTokens,
+    totalCompletionTokens,
+    chats,
+    payments: user.payments.map((p: any) => ({
+      id: p.id,
+      amount: p.amount,
+      currency: p.currency,
+      status: p.status,
+      plan: p.plan,
+      purchaseType: p.purchaseType,
+      createdAt: p.createdAt.toISOString(),
+    })),
+    deployments: user.deployments.map((d: any) => ({
+      id: d.id,
+      projectName: d.projectName,
+      url: d.url,
+      status: d.status,
+      createdAt: d.createdAt.toISOString(),
+    })),
+  };
+}
+
+// ── 14. Visit Analytics (daily, weekly, monthly) ─────────────────────────────
+
+export interface DailyVisitRow {
+  date: string;
+  uniqueVisitors: number;
+  totalViews: number;
+}
+
+export interface VisitAnalytics {
+  daily: DailyVisitRow[];       // last 30 days
+  todayVisitors: number;
+  weekVisitors: number;
+  monthVisitors: number;
+  todayViews: number;
+  weekViews: number;
+  monthViews: number;
+}
+
+export async function getVisitAnalytics(): Promise<VisitAnalytics> {
+  await requireAdmin();
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekStart = new Date(todayStart);
+  weekStart.setDate(weekStart.getDate() - 7);
+  const monthStart = new Date(todayStart);
+  monthStart.setDate(monthStart.getDate() - 30);
+
+  // Daily breakdown for last 30 days
+  // Use COALESCE(userId, meta->>'aid') to deduplicate visitors.
+  // For old events without meta->>'aid', fall back to event id (each counts as 1).
+  const daily = await prisma.$queryRaw<
+    { date: Date; uniqueVisitors: bigint; totalViews: bigint }[]
+  >`
+    SELECT
+      DATE("createdAt") AS "date",
+      COUNT(DISTINCT COALESCE("userId", meta->>'aid', "id"::text)) AS "uniqueVisitors",
+      COUNT(*) AS "totalViews"
+    FROM "AnalyticsEvent"
+    WHERE type = 'PAGE_VIEW'
+      AND "createdAt" >= ${monthStart}
+    GROUP BY DATE("createdAt")
+    ORDER BY "date" ASC
+  `;
+
+  // Aggregated counts
+  const [todayAgg, weekAgg, monthAgg] = await Promise.all([
+    prisma.$queryRaw<{ visitors: bigint; views: bigint }[]>`
+      SELECT
+        COUNT(DISTINCT COALESCE("userId", meta->>'aid', "id"::text)) AS "visitors",
+        COUNT(*) AS "views"
+      FROM "AnalyticsEvent"
+      WHERE type = 'PAGE_VIEW' AND "createdAt" >= ${todayStart}
+    `,
+    prisma.$queryRaw<{ visitors: bigint; views: bigint }[]>`
+      SELECT
+        COUNT(DISTINCT COALESCE("userId", meta->>'aid', "id"::text)) AS "visitors",
+        COUNT(*) AS "views"
+      FROM "AnalyticsEvent"
+      WHERE type = 'PAGE_VIEW' AND "createdAt" >= ${weekStart}
+    `,
+    prisma.$queryRaw<{ visitors: bigint; views: bigint }[]>`
+      SELECT
+        COUNT(DISTINCT COALESCE("userId", meta->>'aid', "id"::text)) AS "visitors",
+        COUNT(*) AS "views"
+      FROM "AnalyticsEvent"
+      WHERE type = 'PAGE_VIEW' AND "createdAt" >= ${monthStart}
+    `,
+  ]);
+
+  return {
+    daily: daily.map((r: any) => ({
+      date: r.date.toISOString().slice(0, 10),
+      uniqueVisitors: Number(r.uniqueVisitors),
+      totalViews: Number(r.totalViews),
+    })),
+    todayVisitors: Number(todayAgg[0]?.visitors ?? 0),
+    weekVisitors: Number(weekAgg[0]?.visitors ?? 0),
+    monthVisitors: Number(monthAgg[0]?.visitors ?? 0),
+    todayViews: Number(todayAgg[0]?.views ?? 0),
+    weekViews: Number(weekAgg[0]?.views ?? 0),
+    monthViews: Number(monthAgg[0]?.views ?? 0),
+  };
 }
