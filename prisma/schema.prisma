@@ -113,8 +113,9 @@ model Chat {
   id             String          @id @default(uuid())
   title          String
   createdAt      DateTime        @default(now())
-  userId         String
-  user           User            @relation(fields: [userId], references: [id])
+  userId         String?         // Nullable: null для анонимных trial-чатов
+  user           User?           @relation(fields: [userId], references: [id])
+  trialToken     String?         @unique // Токен для анонимных чатов (хранится в cookie)
   messages       Message[]
   virtualRecords VirtualRecord[] // Virtual Backend data for this chat/project
 }
@@ -266,4 +267,14 @@ model AnalyticsEvent {
   @@index([userId])
   @@index([type])
   @@index([createdAt])
+}
+
+// Отслеживание анонимных trial-генераций (один бесплатный промпт без регистрации)
+model AnonymousTrial {
+  id        String   @id @default(uuid())
+  ipAddress String   // IP адрес пользователя
+  chatId    String?  // ID созданного trial-чата
+  createdAt DateTime @default(now())
+
+  @@index([ipAddress])
 }

@@ -93,6 +93,8 @@ function RegisterForm() {
           });
 
           if (result?.ok) {
+            // Link trial project if cookie exists
+            try { await fetch("/api/trial/link", { method: "POST" }); } catch {}
             const redirectUrl = callbackUrl || (q ? `/new?q=${encodeURIComponent(q)}` : "/account");
             router.push(redirectUrl);
           } else {
@@ -184,6 +186,8 @@ function RegisterForm() {
         });
 
         if (result?.ok) {
+          // Link trial project if cookie exists
+          try { await fetch("/api/trial/link", { method: "POST" }); } catch {}
           // Redirect to account or callback URL
           const redirectUrl = callbackUrl || (q ? `/new?q=${encodeURIComponent(q)}` : "/account");
           router.push(redirectUrl);

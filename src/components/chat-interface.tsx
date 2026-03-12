@@ -242,6 +242,8 @@ interface ChatInterfaceProps {
     plan: "FREE" | "STARTER" | "CREATOR" | "PRO" | "STUDIO" | "AGENCY";
     role?: "USER" | "ADMIN";
   };
+  isTrialMode?: boolean;  // Анонимный trial — 1 бесплатный промпт без регистрации
+  trialUsed?: boolean;    // Trial уже использован (показываем результат read-only)
 }
 
 // Building UI Card - memoized to prevent animation resets during streaming
@@ -361,7 +363,7 @@ const ThinkingIndicator = memo(function ThinkingIndicator() {
   );
 });
 
-export default function ChatInterface({ chatId, initialMessages = [], initialInput, initialTitle, userData }: ChatInterfaceProps) {
+export default function ChatInterface({ chatId, initialMessages = [], initialInput, initialTitle, userData, isTrialMode = false, trialUsed = false }: ChatInterfaceProps) {
   const router = useRouter();
   const { trackClick } = useAnalytics();
   const [messages, setMessages] = useState<Message[]>(initialMessages.map(m => ({
@@ -373,6 +375,10 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const hasAutoSubmitted = useRef(false);
+  const [trialCompleted, setTrialCompleted] = useState(trialUsed); // Trial промпт использован
+  const [trialFixAttempted, setTrialFixAttempted] = useState(false); // Авто-фикс уже был
+  const trialFixAttemptedRef = useRef(false); // Ref для мгновенной блокировки (без гонки)
+  const [isTrialFixing, setIsTrialFixing] = useState(false); // Идёт авто-фикс
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mobileMessagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -425,7 +431,12 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
   // This prevents the race condition where safeFilesToShow hasn't updated yet
   const hasRealGeneratedCode = useMemo(() => {
     // Check both files and safeFilesToShow - if either has real code, we're not empty
+    const defaultKeys = new Set(["/App.tsx", "/lib/utils.ts", "/lib/stock-photos.ts"]);
+    
     const checkFiles = (fileMap: Record<string, string>) => {
+      // Check for extra files beyond defaults (components, pages, etc.)
+      if (Object.keys(fileMap).some(key => !defaultKeys.has(key))) return true;
+      
       const appContent = fileMap["/App.tsx"];
       if (!appContent) return false;
       // If App.tsx still contains the Hello World placeholder, it's not real code
@@ -563,11 +574,100 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
     }
   };
 
+  // === Авто-фикс ошибок для trial-режима ===
+  const autoFixTrial = useCallback(async (errorMsg: string) => {
+    // Используем ref для мгновенной проверки (state обновляется асинхронно)
+    if (trialFixAttemptedRef.current || !isTrialMode) return;
+    trialFixAttemptedRef.current = true; // Мгновенная блокировка
+    setTrialFixAttempted(true);
+    setIsTrialFixing(true);
+    setHasCodeError(false);
+    setCodeErrorMessage('');
+    setIsLoading(true);
+    setIsAnalyzing(true);
+
+    try {
+      // Добавляем fix-сообщение пользователя в UI
+      const fixMessage = `Исправь ошибку в коде: ${errorMsg}`;
+      setMessages(prev => [...prev, { role: "user", content: fixMessage }]);
+
+      const response = await fetch("/api/chat/trial/fix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          errorMessage: errorMsg,
+          currentFiles: files,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Ошибка исправления");
+      }
+
+      if (!response.body) return;
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let assistantMessage = "";
+
+      setMessages(prev => [...prev, { role: "assistant", content: "" }]);
+
+      let isFirstChunk = true;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        if (isFirstChunk) {
+          setIsAnalyzing(false);
+          setIsActuallyStreaming(true);
+          isFirstChunk = false;
+        }
+
+        const chunk = decoder.decode(value, { stream: true });
+        assistantMessage += chunk;
+
+        setMessages(prev => {
+          const newMessages = [...prev];
+          const lastIndex = newMessages.length - 1;
+          const lastMsg = newMessages[lastIndex];
+          if (lastMsg.role === "assistant") {
+            newMessages[lastIndex] = { ...lastMsg, content: assistantMessage };
+          }
+          return newMessages;
+        });
+      }
+
+      setIsLoading(false);
+      setIsActuallyStreaming(false);
+      setIsApplying(true);
+
+      if (applyingTimeoutRef.current) clearTimeout(applyingTimeoutRef.current);
+      applyingTimeoutRef.current = setTimeout(() => setIsApplying(false), 500);
+
+    } catch (err: any) {
+      console.error("Trial auto-fix error:", err);
+      setError(err.message || "Ошибка автоматического исправления");
+      setIsLoading(false);
+      setIsAnalyzing(false);
+      setIsActuallyStreaming(false);
+      setIsApplying(false);
+    } finally {
+      setIsTrialFixing(false);
+    }
+  }, [isTrialMode, files]);
+
   // Handle code error from CodeViewer/Sandpack
   const handleCodeError = useCallback((error: { message: string }) => {
     setHasCodeError(true);
     setCodeErrorMessage(error.message);
-  }, []);
+
+    // В trial-режиме: автоматически пытаемся исправить (1 попытка)
+    if (isTrialMode && !trialFixAttemptedRef.current) {
+      autoFixTrial(error.message);
+    }
+  }, [isTrialMode, autoFixTrial]);
 
   // Handle auto-fix request from CodeViewer error UI
   const handleRequestFix = useCallback((errorMessage: string) => {
@@ -578,6 +678,12 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
   }, []);
 
   const submitMessage = useCallback(async (messageContent: string) => {
+    // В trial-режиме: если промпт уже использован — блокируем
+    if (isTrialMode && trialCompleted) {
+      setError("Бесплатная проба использована. Зарегистрируйтесь для продолжения.");
+      return;
+    }
+
     // Check if any attachments are still uploading
     const uploadingAttachments = attachments.filter(a => a.status === "uploading");
     if (uploadingAttachments.length > 0) {
@@ -615,6 +721,92 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
     setHasCodeError(false); // Clear any existing code errors
     setCodeErrorMessage('');
 
+    // === TRIAL MODE: отдельная логика ===
+    if (isTrialMode) {
+      try {
+        const response = await fetch("/api/chat/trial", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: [userMessage],
+            currentFiles: files,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          if (response.status === 403) {
+            setTrialCompleted(true);
+            // Если сервер вернул chatId существующего trial-чата
+            if (errorData.chatId) {
+              setCurrentChatId(errorData.chatId);
+            }
+            throw new Error("Бесплатная проба уже использована. Зарегистрируйтесь для продолжения.");
+          }
+          throw new Error(errorData.error || "Ошибка генерации");
+        }
+
+        // Получаем chatId и trialToken из заголовков ответа
+        const trialChatId = response.headers.get("X-Chat-Id");
+        if (trialChatId) {
+          setCurrentChatId(trialChatId);
+        }
+
+        if (!response.body) return;
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let assistantMessage = "";
+
+        setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
+        let isFirstChunk = true;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          if (isFirstChunk) {
+            setIsAnalyzing(false);
+            setIsActuallyStreaming(true);
+            isFirstChunk = false;
+          }
+
+          const chunk = decoder.decode(value, { stream: true });
+          assistantMessage += chunk;
+
+          setMessages((prev) => {
+            const newMessages = [...prev];
+            const lastIndex = newMessages.length - 1;
+            const lastMsg = newMessages[lastIndex];
+            if (lastMsg.role === "assistant") {
+              newMessages[lastIndex] = { ...lastMsg, content: assistantMessage };
+            }
+            return newMessages;
+          });
+        }
+
+        // Стрим завершён — помечаем trial как использованный
+        setTrialCompleted(true);
+        setIsLoading(false);
+        setIsActuallyStreaming(false);
+        setIsApplying(true);
+
+        if (applyingTimeoutRef.current) clearTimeout(applyingTimeoutRef.current);
+        applyingTimeoutRef.current = setTimeout(() => setIsApplying(false), 500);
+
+      } catch (err: any) {
+        console.error("Trial chat error:", err);
+        setError(err.message || "Ошибка генерации");
+        setIsLoading(false);
+        setIsAnalyzing(false);
+        setIsActuallyStreaming(false);
+        setIsApplying(false);
+      }
+      return; // Выходим — дальше идёт логика для залогиненных
+    }
+
+    // === ОБЫЧНЫЙ РЕЖИМ (залогиненный пользователь) ===
     // Optimistically generate Chat ID if not present
     let activeChatId = currentChatId;
 
@@ -749,7 +941,7 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
       setIsActuallyStreaming(false);
       setIsApplying(false);
     }
-  }, [attachments, isLoading, currentChatId, messages, files]);
+  }, [attachments, isLoading, currentChatId, messages, files, isTrialMode, trialCompleted]);
 
   // Update ref when submitMessage changes
   useEffect(() => {
@@ -873,16 +1065,34 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
         setError(null);
         setIsLoading(false);
         
-        // CRITICAL FIX: Reset both files AND safeFilesToShow together
-        // This prevents the desync where files updates but safeFilesToShow stays stale
-        const initialFilesState = { 
+        // Parse files from initialMessages if they contain code
+        // Otherwise reset to defaults
+        const defaultFiles: Record<string, string> = { 
           "/App.tsx": INITIAL_CODE,
           "/lib/utils.ts": LIB_UTILS_CODE,
           "/lib/stock-photos.ts": STOCK_PHOTOS_CODE
         };
-        setFiles(initialFilesState);
-        setSafeFilesToShow(initialFilesState);
-        setValidFiles(initialFilesState);
+        
+        let newFiles: Record<string, string> = defaultFiles;
+        const assistantMsgs = initialMessages.filter(m => m.role === 'assistant');
+        if (assistantMsgs.length > 0) {
+          let parsedFiles = { ...defaultFiles };
+          for (const msg of assistantMsgs) {
+            if (msg.content && (msg.content.includes('<file path=') || msg.content.includes('<boltArtifact'))) {
+              parsedFiles = parseXmlToFiles(msg.content, parsedFiles);
+            }
+          }
+          const defaultKeys = new Set(["/App.tsx", "/lib/utils.ts", "/lib/stock-photos.ts"]);
+          const hasNewContent = Object.keys(parsedFiles).some(k => !defaultKeys.has(k)) || 
+                                parsedFiles["/App.tsx"] !== INITIAL_CODE;
+          if (hasNewContent) {
+            newFiles = parsedFiles;
+          }
+        }
+        
+        setFiles(newFiles);
+        setSafeFilesToShow(newFiles);
+        setValidFiles(newFiles);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatId]);
@@ -913,14 +1123,21 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
     // CRITICAL FIX: Always update safeFilesToShow when messages change and we have real code
     // This ensures preview updates after EVERY message, not just during streaming transitions
     // Check if files have real generated code (not just initial placeholder)
-    const hasRealCode = currentFiles["/App.tsx"] !== INITIAL_CODE && 
+    const appTsxChanged = currentFiles["/App.tsx"] !== INITIAL_CODE && 
       !(currentFiles["/App.tsx"]?.includes("Hello World") && currentFiles["/App.tsx"]?.includes("Welcome to Moonely"));
+    // Also check if there are any files beyond the 3 defaults (components, etc.)
+    const defaultKeys = new Set(["/App.tsx", "/lib/utils.ts", "/lib/stock-photos.ts"]);
+    const hasExtraFiles = Object.keys(currentFiles).some(key => !defaultKeys.has(key));
+    const hasRealCode = appTsxChanged || hasExtraFiles;
     
     // DEBUG: Log state for troubleshooting preview issues
     console.log('[ChatInterface] Parse effect:', {
       hasRealCode,
+      appTsxChanged,
+      hasExtraFiles,
       isActuallyStreaming,
       messagesCount: messages.length,
+      fileCount: Object.keys(currentFiles).length,
       appTsxLength: currentFiles["/App.tsx"]?.length || 0
     });
     
@@ -1054,7 +1271,7 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
   return (
     <div className="h-full w-full overflow-hidden flex flex-col bg-zinc-950 text-zinc-100 font-sans selection:bg-indigo-500/30">
       {error && (
-        <div className="fixed top-4 right-4 z-50 bg-red-500/10 text-red-400 p-4 rounded-xl shadow-lg max-w-md flex flex-col gap-2 border border-red-500/20 backdrop-blur-md">
+        <div className={`fixed ${isTrialMode && trialCompleted ? 'top-16' : 'top-4'} right-4 z-50 bg-red-500/10 text-red-400 p-4 rounded-xl shadow-lg max-w-md flex flex-col gap-2 border border-red-500/20 backdrop-blur-md`}>
           <div>
             <p className="font-bold text-sm">Error</p>
             <p className="text-xs opacity-90">{error}</p>
@@ -1067,8 +1284,32 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
         </div>
       )}
 
+      {/* Баннер регистрации после trial */}
+      {isTrialMode && trialCompleted && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 flex items-center justify-between shadow-lg">
+          <div className="flex items-center gap-3">
+            <Sparkles className="h-5 w-5 text-white" />
+            <span className="text-sm font-medium text-white">
+              Понравилось? Зарегистрируйтесь, чтобы продолжить редактирование, деплоить и экспортировать
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <a href="/login">
+              <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10">
+                Войти
+              </Button>
+            </a>
+            <a href="/register">
+              <Button size="sm" className="bg-white text-indigo-700 hover:bg-white/90 font-semibold">
+                Создать аккаунт
+              </Button>
+            </a>
+          </div>
+        </div>
+      )}
+
       {/* Mobile Layout (Simplified for now, keeping functional) */}
-      <div className="flex md:hidden flex-col h-full w-full relative bg-zinc-950">
+      <div className={`flex md:hidden flex-col h-full w-full relative bg-zinc-950 ${isTrialMode && trialCompleted ? 'pt-12' : ''}`}>
         {/* Mobile Header */}
         <div className="h-14 flex items-center justify-between px-4 shrink-0 bg-zinc-950/80 backdrop-blur-xl z-20 relative">
            <div className="flex items-center gap-3">
@@ -1078,10 +1319,11 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                </Link>
              )}
              <span className="font-semibold truncate max-w-[150px] text-sm">
-               {showHistory ? "История" : (title || "Новый чат")}
+               {showHistory ? "История" : (title || (isTrialMode ? "Пробная генерация" : "Новый чат"))}
              </span>
            </div>
            <div className="flex items-center gap-3">
+             {!isTrialMode && (
              <motion.button 
                whileTap={{ scale: 0.9 }}
                onClick={() => { trackClick("mobile_toggle_history"); setShowHistory(!showHistory); }} 
@@ -1089,6 +1331,7 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
              >
                <Archive className="h-5 w-5" />
              </motion.button>
+             )}
              {userData && (
                 <div className="w-12">
                   <UserProfile email={userData.email} plan={userData.plan} isCollapsed={true} side="bottom" />
@@ -1124,8 +1367,13 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                       {messages.length === 0 && (
                         <div className="h-full flex flex-col items-center justify-center min-h-[400px] px-4">
                           <h1 className="text-3xl font-bold text-center mb-8 text-zinc-200">
-                            Что будем строить?
+                            {isTrialMode ? "Попробуйте Moonely бесплатно" : "Что будем строить?"}
                           </h1>
+                          {isTrialMode && (
+                            <p className="text-sm text-zinc-400 text-center mb-6 max-w-sm">
+                              Опишите сайт, который хотите создать. У вас есть 1 бесплатный промпт — убедитесь, что Moonely работает!
+                            </p>
+                          )}
                           <div className="w-full">
                             <ChatSuggestions onSelect={(text) => setInput(text)} />
                           </div>
@@ -1187,7 +1435,7 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                                 )}
                                 
                                 {/* Show Fix Error button if there's a code error on the latest assistant message */}
-                                {hasCodeError && index === messages.length - 1 && hasCodeBlocks(msg.content) && !isLoading && !isApplying && (
+                                {!isTrialMode && hasCodeError && index === messages.length - 1 && hasCodeBlocks(msg.content) && !isLoading && !isApplying && (
                                   <button
                                     onClick={() => { trackClick("fix_error_mobile"); handleRequestFix(codeErrorMessage 
                                       ? `Исправь ошибку в коде: ${codeErrorMessage}`
@@ -1218,6 +1466,17 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                  
                  {/* Mobile Input */}
                  <div className="p-3 bg-zinc-950/90 backdrop-blur-xl shrink-0 z-20 rounded-t-3xl border-t border-white/5">
+                    {isTrialMode && trialCompleted ? (
+                      <div className="text-center py-3">
+                        <p className="text-sm text-zinc-400 mb-3">Бесплатный промпт использован</p>
+                        <a href="/register">
+                          <Button className="bg-indigo-600 hover:bg-indigo-500 text-white">
+                            Создать аккаунт и продолжить
+                          </Button>
+                        </a>
+                      </div>
+                    ) : (
+                    <>
                     {/* Attachment Preview */}
                     <AttachmentPreview attachments={attachments} onRemove={handleAttachmentRemove} />
                     <form onSubmit={handleSubmit} className="flex gap-2 items-end">
@@ -1230,7 +1489,7 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                         className="h-11 w-11 flex items-center justify-center shrink-0" 
                       />
                       <TextareaAutosize
-                        placeholder="Введите сообщение..."
+                        placeholder={isTrialMode ? "Опишите сайт, который хотите создать..." : "Введите сообщение..."}
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         className="flex w-full rounded-2xl bg-zinc-950 px-4 py-3 text-base placeholder:text-zinc-600 focus:outline-none resize-none flex-1"
@@ -1243,6 +1502,8 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                         <ArrowUp size={20} />
                       </Button>
                     </form>
+                    </>
+                    )}
                  </div>
            </div>
            
@@ -1256,9 +1517,9 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                 projectName={title} 
                 isEmpty={isPreviewEmpty}
                 onError={handleCodeError}
-                onRequestFix={handleRequestFix}
+                onRequestFix={isTrialMode ? undefined : handleRequestFix}
                 hasError={hasCodeError}
-                canExport={userData?.plan !== 'FREE'}
+                canExport={isTrialMode ? false : userData?.plan !== 'FREE'}
               />
            </div>
         </div>
@@ -1502,13 +1763,13 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                     <Bot className="w-8 h-8 text-indigo-400" />
                   </div>
                   <h1 className="text-2xl font-semibold text-center mb-2 text-zinc-100">
-                    Что вы хотите создать?
+                    {isTrialMode ? "Попробуйте Moonely бесплатно" : "Что вы хотите создать?"}
                   </h1>
                   <p className="text-zinc-500 text-center max-w-xs mb-8 text-sm">
-                    Опишите вашу идею и Moonely создаст её за считанные минуты
+                    {isTrialMode ? "У вас есть 1 бесплатный промпт — опишите идею и увидите результат" : "Опишите вашу идею и Moonely создаст её за считанные минуты"}
                   </p>
                   <div className="w-full max-w-md">
-                    <ChatSuggestions onSelect={(text) => setInput(text)} />
+                    {!isTrialMode && <ChatSuggestions onSelect={(text) => setInput(text)} />}
                   </div>
                 </div>
               )}
@@ -1580,7 +1841,7 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                             )}
                             
                             {/* Show Fix Error button if there's a code error on the latest assistant message */}
-                            {hasCodeError && index === messages.length - 1 && hasCodeBlocks(msg.content) && !isLoading && !isApplying && (
+                            {!isTrialMode && hasCodeError && index === messages.length - 1 && hasCodeBlocks(msg.content) && !isLoading && !isApplying && (
                               <motion.button
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
@@ -1620,6 +1881,17 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
 
           {/* Floating Input Card */}
           <div className="absolute bottom-4 left-6 right-6 z-20">
+            {isTrialMode && trialCompleted ? (
+              <div className="relative flex flex-col items-center bg-zinc-900/90 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-2xl shadow-black/50">
+                <p className="text-zinc-400 text-sm mb-3">Ваш пробный промпт использован</p>
+                <a
+                  href="/register"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-all hover:scale-105 active:scale-95 shadow-lg"
+                >
+                  Создать аккаунт и продолжить
+                </a>
+              </div>
+            ) : (
             <div className="relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-3xl blur opacity-0 group-hover:opacity-100 transition duration-500"></div>
               <form 
@@ -1629,7 +1901,7 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                 {/* Attachment Preview */}
                 <AttachmentPreview attachments={attachments} onRemove={handleAttachmentRemove} />
                 <TextareaAutosize
-                  placeholder="Попросите Moonely..."
+                  placeholder={isTrialMode ? "Опишите сайт, который хотите создать..." : "Попросите Moonely..."}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   className="w-full bg-transparent border-none px-4 py-3 text-base text-zinc-100 placeholder:text-zinc-600 focus:outline-none resize-none max-h-32 min-h-[52px]"
@@ -1665,6 +1937,7 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                 </div>
               </form>
             </div>
+            )}
           </div>
         </ResizablePanel>
 
@@ -1682,9 +1955,9 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                projectName={title}
                isEmpty={isPreviewEmpty}
                onError={handleCodeError}
-               onRequestFix={handleRequestFix}
+               onRequestFix={isTrialMode ? undefined : handleRequestFix}
                hasError={hasCodeError}
-               canExport={userData?.plan !== 'FREE'}
+               canExport={isTrialMode ? false : userData?.plan !== 'FREE'}
              />
           </div>
         </ResizablePanel>

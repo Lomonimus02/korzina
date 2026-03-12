@@ -37,11 +37,17 @@ export async function getIndividualPrompts(page = 1, pageSize = 30, searchEmail 
 
   const whereClause: any = { role: "assistant" };
   if (searchEmail.trim()) {
-    whereClause.chat = {
-      user: {
-        email: { contains: searchEmail.trim(), mode: "insensitive" },
-      },
-    };
+    // Search by email OR by "trial" keyword for anonymous chats
+    const term = searchEmail.trim().toLowerCase();
+    if (term === "trial" || term === "анон") {
+      whereClause.chat = { userId: null };
+    } else {
+      whereClause.chat = {
+        user: {
+          email: { contains: searchEmail.trim(), mode: "insensitive" },
+        },
+      };
+    }
   }
 
   const [rows, total] = await Promise.all([
@@ -62,6 +68,7 @@ export async function getIndividualPrompts(page = 1, pageSize = 30, searchEmail 
         chat: {
           select: {
             title: true,
+            trialToken: true,
             user: { select: { email: true } },
           },
         },
@@ -80,7 +87,7 @@ export async function getIndividualPrompts(page = 1, pageSize = 30, searchEmail 
     createdAt: r.createdAt.toISOString(),
     chatId: r.chatId,
     chatTitle: r.chat.title,
-    userEmail: r.chat.user.email,
+    userEmail: r.chat.user?.email ?? "🔗 Trial (анон)",
   }));
 
   return { data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
@@ -105,9 +112,14 @@ export async function getChatAverages(page = 1, pageSize = 100, searchEmail = ""
 
   const whereClause: any = {};
   if (searchEmail.trim()) {
-    whereClause.user = {
-      email: { contains: searchEmail.trim(), mode: "insensitive" },
-    };
+    const term = searchEmail.trim().toLowerCase();
+    if (term === "trial" || term === "анон") {
+      whereClause.userId = null;
+    } else {
+      whereClause.user = {
+        email: { contains: searchEmail.trim(), mode: "insensitive" },
+      };
+    }
   }
 
   const [chats, totalChats] = await Promise.all([
@@ -116,6 +128,7 @@ export async function getChatAverages(page = 1, pageSize = 100, searchEmail = ""
       select: {
         id: true,
         title: true,
+        trialToken: true,
         user: { select: { email: true } },
         messages: {
           where: { role: "assistant" },
@@ -139,7 +152,7 @@ export async function getChatAverages(page = 1, pageSize = 100, searchEmail = ""
     return {
       chatId: c.id,
       chatTitle: c.title,
-      userEmail: c.user.email,
+      userEmail: c.user?.email ?? "🔗 Trial (анон)",
       avgPromptTokens: Math.round(
         msgs.reduce((s: number, m: any) => s + (m.promptTokens ?? 0), 0) / n
       ),
@@ -172,9 +185,14 @@ export async function getUserChatTotals(page = 1, pageSize = 100, searchEmail = 
 
   const whereClause: any = {};
   if (searchEmail.trim()) {
-    whereClause.user = {
-      email: { contains: searchEmail.trim(), mode: "insensitive" },
-    };
+    const term = searchEmail.trim().toLowerCase();
+    if (term === "trial" || term === "анон") {
+      whereClause.userId = null;
+    } else {
+      whereClause.user = {
+        email: { contains: searchEmail.trim(), mode: "insensitive" },
+      };
+    }
   }
 
   const [chats, totalChats] = await Promise.all([
@@ -183,6 +201,7 @@ export async function getUserChatTotals(page = 1, pageSize = 100, searchEmail = 
       select: {
         id: true,
         title: true,
+        trialToken: true,
         user: { select: { email: true } },
         messages: {
           select: {
@@ -201,7 +220,7 @@ export async function getUserChatTotals(page = 1, pageSize = 100, searchEmail = 
   ]);
 
   const data = chats.map((c: any) => ({
-    userEmail: c.user.email,
+    userEmail: c.user?.email ?? "🔗 Trial (анон)",
     chatId: c.id,
     chatTitle: c.title,
     totalPromptTokens: c.messages.reduce((s: number, m: any) => s + (m.promptTokens ?? 0), 0),
@@ -231,9 +250,14 @@ export async function getPromptsPerChat(page = 1, pageSize = 100, searchEmail = 
 
   const whereClause: any = {};
   if (searchEmail.trim()) {
-    whereClause.user = {
-      email: { contains: searchEmail.trim(), mode: "insensitive" },
-    };
+    const term = searchEmail.trim().toLowerCase();
+    if (term === "trial" || term === "анон") {
+      whereClause.userId = null;
+    } else {
+      whereClause.user = {
+        email: { contains: searchEmail.trim(), mode: "insensitive" },
+      };
+    }
   }
 
   const [chats, totalChats] = await Promise.all([
@@ -242,6 +266,7 @@ export async function getPromptsPerChat(page = 1, pageSize = 100, searchEmail = 
       select: {
         id: true,
         title: true,
+        trialToken: true,
         user: { select: { email: true } },
         messages: {
           where: { role: "user" },
@@ -258,7 +283,7 @@ export async function getPromptsPerChat(page = 1, pageSize = 100, searchEmail = 
   const data = chats.map((c: any) => ({
     chatId: c.id,
     chatTitle: c.title,
-    userEmail: c.user.email,
+    userEmail: c.user?.email ?? "🔗 Trial (анон)",
     promptCount: c.messages.length,
   })) satisfies PromptsPerChatRow[];
 
@@ -304,13 +329,14 @@ export async function getFirstPromptStats() {
       m."createdAt"
     FROM "Message" m
     JOIN "Chat" c ON c."id" = m."chatId"
-    JOIN "User" u ON u."id" = c."userId"
+    LEFT JOIN "User" u ON u."id" = c."userId"
     WHERE m."role" = 'assistant'
     ORDER BY m."chatId", m."createdAt" ASC
   `;
 
   return rows.map((r: any) => ({
     ...r,
+    userEmail: r.userEmail ?? "🔗 Trial (анон)",
     promptTokens: Number(r.promptTokens),
     completionTokens: Number(r.completionTokens),
     cost: Number(r.cost),

@@ -97,6 +97,8 @@ function LoginForm() {
       if (result?.error) {
         setError("Неверный email или пароль");
       } else {
+        // Link trial project if cookie exists
+        try { await fetch("/api/trial/link", { method: "POST" }); } catch {}
         router.push(getRedirectUrl());
         router.refresh();
       }

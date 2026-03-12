@@ -562,7 +562,8 @@ function ErrorStatePreview({ onRequestFix, errorMessage }: { onRequestFix?: (err
           Нажмите кнопку ниже, чтобы исправить
         </p>
         
-        {/* Fix Button */}
+        {/* Fix Button or Register CTA */}
+        {onRequestFix ? (
         <button
           onClick={handleFix}
           disabled={isFixing}
@@ -580,6 +581,14 @@ function ErrorStatePreview({ onRequestFix, errorMessage }: { onRequestFix?: (err
             </>
           )}
         </button>
+        ) : (
+        <a
+          href="/register"
+          className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 text-indigo-300 hover:text-indigo-200 hover:border-indigo-500/40 transition-all duration-300"
+        >
+          <span className="text-sm font-medium">Создать аккаунт и продолжить</span>
+        </a>
+        )}
       </div>
     </div>
   );

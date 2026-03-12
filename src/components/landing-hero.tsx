@@ -123,7 +123,7 @@ export function LandingHero({ user }: LandingHeroProps) {
     trackClick("landing_submit");
     if (images.length > 0) sessionStorage.setItem("pendingImages", JSON.stringify(images));
     if (user) router.push(`/new?q=${encodeURIComponent(prompt)}`);
-    else router.push(`/register?q=${encodeURIComponent(prompt)}`);
+    else router.push(`/try?q=${encodeURIComponent(prompt)}`);
   };
 
   const handleVoiceTranscript = (transcript: string) => {

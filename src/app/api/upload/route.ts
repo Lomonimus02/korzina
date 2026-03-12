@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { v4 as uuidv4 } from "uuid";
 import prisma from "@/lib/db";
+import { cookies } from "next/headers";
 
 // Валидация переменных окружения для Yandex Object Storage
 function validateYandexCredentials() {
@@ -60,29 +61,46 @@ export async function POST(request: NextRequest) {
     // 0. Проверка конфигурации Yandex Cloud
     const s3Client = createS3Client();
     
-    // 1. Аутентификация пользователя
+    // 1. Аутентификация пользователя (или trial-пользователя)
+    let userId: string;
+    let isTrialUser = false;
+    
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: "Необходима авторизация" },
-        { status: 401 }
-      );
+    if (session?.user?.email) {
+      // Авторизованный пользователь
+      const user = await prisma.user.findUnique({
+        where: { email: session.user.email },
+        select: { id: true }
+      });
+      if (!user) {
+        return NextResponse.json(
+          { error: "Пользователь не найден" },
+          { status: 401 }
+        );
+      }
+      userId = user.id;
+    } else {
+      // Проверяем trial cookie
+      const cookieStore = await cookies();
+      const trialToken = cookieStore.get("moonely_trial_token")?.value;
+      if (trialToken) {
+        // Есть cookie — используем для идентификации
+        userId = `trial_${trialToken.substring(0, 16)}`;
+        isTrialUser = true;
+      } else {
+        // Нет cookie — проверяем Referer (загрузка с /try до первого промпта)
+        const referer = request.headers.get("referer") || "";
+        if (referer.includes("/try")) {
+          userId = `trial_anonymous_${Date.now()}`;
+          isTrialUser = true;
+        } else {
+          return NextResponse.json(
+            { error: "Необходима авторизация" },
+            { status: 401 }
+          );
+        }
+      }
     }
-
-    // Get user ID from database using email
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true }
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "Пользователь не найден" },
-        { status: 401 }
-      );
-    }
-
-    const userId = user.id;
 
     // 2. Парсинг formData
     const formData = await request.formData();
@@ -134,20 +152,32 @@ export async function POST(request: NextRequest) {
     // 8. Формирование публичного URL
     const url = `https://${BUCKET_NAME}.storage.yandexcloud.net/${fileKey}`;
 
-    // 9. Создание записи в базе данных
-    const asset = await prisma.asset.create({
-      data: {
-        userId,
-        fileName: file.name,
-        fileKey,
-        url,
-        size: file.size,
-        mimeType: file.type,
-      },
-    });
+    // 9. Создание записи в базе данных (только для авторизованных пользователей)
+    // Trial-пользователи не имеют записи User, поэтому Asset не создаётся
+    if (!isTrialUser) {
+      const asset = await prisma.asset.create({
+        data: {
+          userId,
+          fileName: file.name,
+          fileKey,
+          url,
+          size: file.size,
+          mimeType: file.type,
+        },
+      });
 
-    // 10. Возврат созданного Asset
-    return NextResponse.json(asset);
+      // 10. Возврат созданного Asset
+      return NextResponse.json(asset);
+    }
+
+    // Для trial-пользователей возвращаем минимальный ответ
+    return NextResponse.json({
+      id: uuidv4(),
+      url,
+      fileName: file.name,
+      size: file.size,
+      mimeType: file.type,
+    });
   } catch (error) {
     // Детальное логирование ошибки для отладки в production
     console.error("Upload error details:", {

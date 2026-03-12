@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { UserProfile } from "./user-profile";
 import { SidebarChatList } from "./sidebar-chat-list";
 import { SidebarCredits } from "./sidebar-credits";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -23,6 +23,13 @@ interface SidebarClientProps {
 export function SidebarClient({ user, remainingDaily = 3, remainingMonthly = 15, freeDailyLimit = 3, freeMonthlyLimit = 15 }: SidebarClientProps) {
   const { trackClick } = useAnalytics();
   const [isCollapsed, setIsCollapsed] = useState(true);
+
+  // Auto-link trial project for OAuth users who still have the cookie
+  useEffect(() => {
+    if (document.cookie.includes("moonely_trial_token")) {
+      fetch("/api/trial/link", { method: "POST" }).catch(() => {});
+    }
+  }, []);
 
   return (
     <div 
