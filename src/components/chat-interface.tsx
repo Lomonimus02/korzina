@@ -18,7 +18,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Send, User, Bot, Loader2, FileCode2, Archive, ChevronLeft, History, LayoutTemplate, MessageSquare, Pencil, ArrowUp, Eye, Sparkles, Zap, Wand2, Code2, CheckCircle2, AlertTriangle, Upload, ImagePlus, X } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
+import { Send, User, Bot, Loader2, FileCode2, Archive, ChevronLeft, History, LayoutTemplate, MessageSquare, Pencil, ArrowUp, Eye, Sparkles, Zap, Wand2, Code2, CheckCircle2, AlertTriangle, Upload, ImagePlus, X, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
 import { useState, useEffect, useRef, useCallback, memo, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -676,6 +687,43 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
     // Submit a fix request message to the AI using ref to avoid circular dependency
     submitMessageRef.current?.(errorMessage);
   }, []);
+
+  // Rollback confirmation dialog state
+  const [rollbackDialogOpen, setRollbackDialogOpen] = useState(false);
+  const [pendingRollbackIndex, setPendingRollbackIndex] = useState<number | null>(null);
+
+  // Open the custom confirmation dialog
+  const requestRollback = useCallback((index: number) => {
+    setPendingRollbackIndex(index);
+    setRollbackDialogOpen(true);
+  }, []);
+
+  // Actually perform the rollback (called when user confirms in the dialog)
+  const confirmRollback = useCallback(async () => {
+    if (pendingRollbackIndex === null || !currentChatId) return;
+    setRollbackDialogOpen(false);
+
+    try {
+      const res = await fetch("/api/chat/rollback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatId: currentChatId, cutoffIndex: pendingRollbackIndex }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Ошибка отката");
+      }
+
+      setMessages(prev => prev.slice(0, pendingRollbackIndex + 1));
+      toast.success("Версия восстановлена");
+    } catch (err: any) {
+      console.error("Rollback error:", err);
+      toast.error(err.message || "Не удалось восстановить версию");
+    } finally {
+      setPendingRollbackIndex(null);
+    }
+  }, [currentChatId, pendingRollbackIndex]);
 
   const submitMessage = useCallback(async (messageContent: string) => {
     // В trial-режиме: если промпт уже использован — блокируем
@@ -1447,6 +1495,17 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                                     <span>Исправить ошибку</span>
                                   </button>
                                 )}
+                                
+                                {/* Rollback button for assistant messages */}
+                                {!isTrialMode && hasCodeBlocks(msg.content) && !isLoading && !isApplying && index !== messages.length - 1 && index >= Math.max(0, messages.length - 15) && (
+                                  <button
+                                    onClick={() => requestRollback(index)}
+                                    className="mt-2 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-all text-xs"
+                                  >
+                                    <RotateCcw className="w-3 h-3" />
+                                    <span>Восстановить эту версию</span>
+                                  </button>
+                                )}
                               </div>
                             )}
                           </div>
@@ -1783,7 +1842,7 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                     transition={{ duration: 0.4, ease: "easeOut" }}
                     className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                   >
-                    <div className={`max-w-[90%] ${msg.role === "user" ? "ml-12" : "mr-12"}`}>
+                    <div className={`max-w-[90%] group ${msg.role === "user" ? "ml-12" : "mr-12"}`}>
                       {/* Images above message for user messages (legacy format) */}
                       {msg.role === "user" && msg.images && msg.images.length > 0 && (
                         <div className="flex flex-wrap gap-2 mb-2 justify-end">
@@ -1854,6 +1913,18 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
                                 <AlertTriangle className="w-3.5 h-3.5" />
                                 <span>Исправить ошибку</span>
                               </motion.button>
+                            )}
+                            
+                            {/* Rollback button for assistant messages (not on last while loading) */}
+                            {!isTrialMode && hasCodeBlocks(msg.content) && !isLoading && !isApplying && index !== messages.length - 1 && index >= Math.max(0, messages.length - 15) && (
+                              <button
+                                onClick={() => requestRollback(index)}
+                                title="Восстановить эту версию"
+                                className="mt-2 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-all text-xs opacity-0 group-hover:opacity-100"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                                <span>Восстановить эту версию</span>
+                              </button>
                             )}
                           </div>
                         )}
@@ -1963,6 +2034,29 @@ export default function ChatInterface({ chatId, initialMessages = [], initialInp
         </ResizablePanel>
       </ResizablePanelGroup>
       </div>
+
+      {/* Rollback Confirmation Dialog */}
+      <AlertDialog open={rollbackDialogOpen} onOpenChange={setRollbackDialogOpen}>
+        <AlertDialogContent className="bg-zinc-900 border border-white/10 shadow-2xl shadow-black/60">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-zinc-100">Восстановить версию?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400">
+              Все последующие сообщения и изменения кода будут безвозвратно удалены. Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-zinc-800 border-white/10 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100">
+              Отмена
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmRollback}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white border-0"
+            >
+              Восстановить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
