@@ -67,16 +67,30 @@ export async function POST(req: NextRequest) {
     const apiKey = await ensureProjectKey(chatId).catch(() => null);
     console.log(`[Deploy] API key for chatId=${chatId}:`, apiKey ? "ok" : "skipped");
 
-    // Create DB record immediately so the user can track progress
-    const deployment = await prisma.deployment.create({
-      data: {
-        userId: user.id,
-        chatId,
-        projectName: sanitizedSlug,
-        status: "DEPLOYING",
-        files: JSON.stringify(files),
-      },
+    // 1 Chat = 1 Deployment: upsert so the dashboard only shows the latest deploy
+    const existing = await prisma.deployment.findFirst({
+      where: { chatId, userId: user.id },
+      select: { id: true },
     });
+
+    const deployment = existing
+      ? await prisma.deployment.update({
+          where: { id: existing.id },
+          data: {
+            projectName: sanitizedSlug,
+            status: "DEPLOYING",
+            files: JSON.stringify(files),
+          },
+        })
+      : await prisma.deployment.create({
+          data: {
+            userId: user.id,
+            chatId,
+            projectName: sanitizedSlug,
+            status: "DEPLOYING",
+            files: JSON.stringify(files),
+          },
+        });
 
     try {
       // Bundle TSX → static HTML (compile React source files)

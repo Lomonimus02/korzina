@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useAnalytics } from "@/hooks/use-analytics";
 import {
@@ -37,6 +37,24 @@ export function DeployButton({ files, chatId, className }: DeployButtonProps) {
   const [step, setStep] = useState<Step>("idle");
   const [deployedUrl, setDeployedUrl] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [hasExistingDeploy, setHasExistingDeploy] = useState(false);
+
+  // Check if a deployment already exists for this chatId
+  useEffect(() => {
+    if (!isOpen || !chatId) return;
+    let cancelled = false;
+    fetch("/api/deploy")
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        const exists = data.deployments?.some(
+          (d: any) => d.chatId === chatId && (d.status === "DEPLOYED" || d.status === "DEPLOYING")
+        );
+        setHasExistingDeploy(!!exists);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [isOpen, chatId]);
 
   const handleOpen = () => {
     trackClick("deploy_open");
@@ -121,6 +139,14 @@ export function DeployButton({ files, chatId, className }: DeployButtonProps) {
               </DialogHeader>
 
               <div className="py-4 space-y-3">
+                {hasExistingDeploy && (
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
+                    <p className="text-xs text-amber-300">
+                      У этого чата уже есть опубликованный сайт. Предыдущая версия будет заменена на новую по той же ссылке.
+                    </p>
+                  </div>
+                )}
                 <div className="bg-zinc-800/50 rounded-lg p-4 text-xs text-zinc-400 space-y-1">
                   <p>• Сайт публикуется на платформе Moonely.</p>
                   <p>• URL: <span className="text-zinc-300">{chatId}.deploy.moonely.ru</span></p>
