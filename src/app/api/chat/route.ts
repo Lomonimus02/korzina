@@ -91,11 +91,6 @@ export async function POST(req: Request) {
     return Response.json({ error: "Invalid messages format" }, { status: 400 });
   }
 
-  // Limit message count to prevent abuse
-  if (messages.length > 100) {
-    return Response.json({ error: "Too many messages" }, { status: 400 });
-  }
-
   // Limit image/attachment count
   if (images && images.length > 5) {
     return Response.json({ error: "Too many images (max 5)" }, { status: 400 });
@@ -266,37 +261,21 @@ Example: <img src="${attachments[0].url}" alt="${attachments[0].name}" className
     const filesContext = buildFilesContext(currentFiles);
     const systemPrompt = getSystemPrompt(repoMap, filesContext);
 
-    // Build messages array
+    // Build messages array with a Sliding Window (last 15 messages)
+    const MAX_HISTORY = 15;
+    const historyMessages = messages.slice(0, -1); // Exclude the current new message
+    const recentHistory = historyMessages.slice(-MAX_HISTORY).map((m: any) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content as string,
+    }));
+
+    // We always send: System Prompt -> Recent History -> Newest Message
     let messagesToSend: ChatMessage[];
-    
-    // Always include recent history for context (like Lovable approach)
-    // Keep last 6 messages (3 exchanges) + system prompt + current message
-    const MAX_HISTORY_MESSAGES = 6;
-    const historyMessages = messages.slice(0, -1); // All except current
-    const recentHistory = historyMessages.slice(-MAX_HISTORY_MESSAGES); // Last 6
-    
-    if (currentFiles) {
-      // Edit mode - include recent history + file context
-      messagesToSend = [
-        { role: "system", content: systemPrompt },
-        ...recentHistory.map((m: any) => ({
-          role: m.role as "user" | "assistant",
-          content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
-        })),
-        { role: "user", content: lastMessageContent }
-      ];
-    } else {
-      // Initial mode - include full history (up to reasonable limit)
-      const limitedHistory = historyMessages.slice(-20); // Max 20 messages
-      messagesToSend = [
-        { role: "system", content: systemPrompt },
-        ...limitedHistory.map((m: any) => ({
-          role: m.role as "user" | "assistant",
-          content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
-        })),
-        { role: "user", content: lastMessageContent }
-      ];
-    }
+    messagesToSend = [
+      { role: "system", content: systemPrompt },
+      ...recentHistory,
+      { role: "user", content: lastMessageContent }
+    ];
 
     console.log("Sending to OpenRouter:", JSON.stringify(messagesToSend.map(m => ({ role: m.role, contentType: typeof m.content === 'string' ? 'string' : 'array' })), null, 2));
 
