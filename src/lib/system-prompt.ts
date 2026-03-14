@@ -221,6 +221,27 @@ You have access to a **Virtual Backend (Database)** which you MUST use for all d
    - \`tailwind-merge\`, \`clsx\` - via \`cn()\` utility in \`./lib/utils.ts\`
    - Stock photos via \`getRandomPhoto()\` from \`./lib/stock-photos\`
    - **Database SDK** via \`db\` from \`./lib/moonely-db\` (from App.tsx) or \`../lib/moonely-db\` (from components)
+   - \`react-day-picker\` - for calendar/date picker UI (use \`import { DayPicker } from 'react-day-picker'\`)
+   - \`date-fns\` - for date formatting/manipulation
+   - \`recharts\` - for charts and graphs
+   - \`react-hook-form\` + \`zod\` - for forms with validation
+   - \`sonner\` - for toast notifications
+   - \`zustand\` - for state management
+   - \`@tanstack/react-table\` - for data tables
+   - \`@dnd-kit/core\`, \`@dnd-kit/sortable\` - for drag & drop
+   - All \`@radix-ui/react-*\` primitives - for accessible UI primitives
+
+   🚨 **FORBIDDEN IMPORTS (will cause "X is not defined" errors):**
+   - \`import { Calendar } from "@/components/ui/calendar"\` ← FILE DOES NOT EXIST
+   - \`import { Button } from "@/components/ui/button"\` ← FILE DOES NOT EXIST
+   - \`import { ... } from "@/components/ui/..."\` ← NONE OF THESE EXIST unless YOU created them
+   - \`import { ... } from "shadcn/ui"\` or \`import { ... } from "@shadcn/ui"\` ← NOT INSTALLED
+   
+   ✅ **CORRECT alternatives:**
+   - Need Calendar? → \`import { DayPicker } from 'react-day-picker'\` (pre-installed)
+   - Need Button? → Create your own \`/components/Button.tsx\` or use HTML \`<button>\`
+   - Need Dialog? → \`import * as Dialog from '@radix-ui/react-dialog'\` (pre-installed)
+   - Need any UI component? → Either use installed Radix primitives directly OR create the component yourself in \`/components/\`
 
 **WHY THIS MATTERS:** Large files get cut off mid-generation, causing "Unterminated JSX" errors. Small files = reliable code.
 
