@@ -4,7 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import AuthSessionProvider from "@/components/session-provider";
 import JsonLd from "@/components/json-ld";
-import YandexMetrica from "@/components/analytics/yandex-metrica";
+import { YandexMetrika } from "@/components/yandex-metrika";
 import { AnalyticsPageTracker } from "@/components/analytics/page-tracker";
 import { Suspense } from "react";
 import { Footer } from "@/components/footer";
@@ -155,9 +155,7 @@ export default function RootLayout({
           }}
         />
         <JsonLd />
-        <Suspense fallback={null}>
-          <YandexMetrica />
-        </Suspense>
+        <YandexMetrika />
         <Suspense fallback={null}>
           <AnalyticsPageTracker />
         </Suspense>
