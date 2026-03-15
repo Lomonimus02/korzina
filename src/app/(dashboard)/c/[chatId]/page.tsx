@@ -19,12 +19,14 @@ export default async function ChatPage({ params }: ChatPageProps) {
 
   const { chatId } = await params;
 
-  const chat = await prisma.chat.findUnique({
+  const chat = await prisma.chat.findFirst({
     where: {
       id: chatId,
+      deletedAt: null,
     },
     include: {
       messages: {
+        where: { deletedAt: null },
         orderBy: {
           createdAt: "asc",
         },

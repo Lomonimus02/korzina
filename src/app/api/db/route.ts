@@ -67,6 +67,7 @@ async function authorizeProjectAccess(
     where: {
       id: requestedProjectId,
       userId: userId,
+      deletedAt: null,
     },
   });
 

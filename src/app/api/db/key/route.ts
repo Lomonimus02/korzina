@@ -41,8 +41,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const chat = await prisma.chat.findUnique({
-      where: { id: projectId },
+    const chat = await prisma.chat.findFirst({
+      where: { id: projectId, deletedAt: null },
     });
 
     // Если чат существует - проверяем владельца

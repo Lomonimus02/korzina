@@ -28,8 +28,8 @@ export async function POST(req: Request) {
   }
 
   // Verify the user owns this chat
-  const chat = await prisma.chat.findUnique({
-    where: { id: chatId },
+  const chat = await prisma.chat.findFirst({
+    where: { id: chatId, deletedAt: null },
   });
 
   if (!chat || chat.userId !== user.id) {

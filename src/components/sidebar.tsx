@@ -18,6 +18,7 @@ export async function Sidebar() {
     where: { email: session.user.email },
     include: {
       chats: {
+        where: { deletedAt: null },
         orderBy: { createdAt: "desc" },
       },
     },

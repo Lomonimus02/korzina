@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 
     // Проверяем владение проектом
     const chat = await prisma.chat.findFirst({
-      where: { id: projectId, userId: userId },
+      where: { id: projectId, userId: userId, deletedAt: null },
     });
 
     if (!chat) {
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
 
     // Проверяем владение проектом
     const chat = await prisma.chat.findFirst({
-      where: { id: projectId, userId: userId },
+      where: { id: projectId, userId: userId, deletedAt: null },
     });
 
     if (!chat) {
@@ -113,7 +113,7 @@ export async function DELETE(req: NextRequest) {
 
     // Проверяем владение проектом
     const chat = await prisma.chat.findFirst({
-      where: { id: projectId, userId: userId },
+      where: { id: projectId, userId: userId, deletedAt: null },
     });
 
     if (!chat) {

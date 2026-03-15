@@ -14,6 +14,7 @@ export async function GET() {
     where: { email: session.user.email },
     include: {
       chats: {
+        where: { deletedAt: null },
         orderBy: { createdAt: "desc" },
       },
     },

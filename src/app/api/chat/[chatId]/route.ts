@@ -34,14 +34,16 @@ export async function DELETE(
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Delete messages first (since no Cascade in schema)
-    await prisma.message.deleteMany({
+    // Soft-delete: mark chat and messages as deleted (preserve data for admin stats)
+    const now = new Date();
+    await prisma.message.updateMany({
       where: { chatId: chatId },
+      data: { deletedAt: now },
     });
 
-    // Delete chat
-    await prisma.chat.delete({
+    await prisma.chat.update({
       where: { id: chatId },
+      data: { deletedAt: now },
     });
 
     return NextResponse.json({ success: true });
@@ -69,8 +71,8 @@ export async function PATCH(
   }
 
   try {
-    const chat = await prisma.chat.findUnique({
-      where: { id: chatId },
+    const chat = await prisma.chat.findFirst({
+      where: { id: chatId, deletedAt: null },
       select: { userId: true },
     });
 

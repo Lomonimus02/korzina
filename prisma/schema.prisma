@@ -113,6 +113,7 @@ model Chat {
   id             String          @id @default(uuid())
   title          String
   createdAt      DateTime        @default(now())
+  deletedAt      DateTime?       // Soft-delete: null = active, set = deleted by user
   userId         String?         // Nullable: null для анонимных trial-чатов
   user           User?           @relation(fields: [userId], references: [id])
   trialToken     String?         @unique // Токен для анонимных чатов (хранится в cookie)
@@ -121,15 +122,16 @@ model Chat {
 }
 
 model Message {
-  id               String   @id @default(uuid())
-  role             String   // 'user' или 'assistant'
-  content          String   // Текст сообщения или код
-  createdAt        DateTime @default(now())
+  id               String    @id @default(uuid())
+  role             String    // 'user' или 'assistant'
+  content          String    // Текст сообщения или код
+  createdAt        DateTime  @default(now())
+  deletedAt        DateTime? // Soft-delete: null = active, set = deleted with chat
   chatId           String
-  chat             Chat     @relation(fields: [chatId], references: [id])
-  promptTokens     Int?     @default(0)
-  completionTokens Int?     @default(0)
-  cost             Float?   @default(0.0) // Cost in USD
+  chat             Chat      @relation(fields: [chatId], references: [id])
+  promptTokens     Int?      @default(0)
+  completionTokens Int?      @default(0)
+  cost             Float?    @default(0.0) // Cost in USD
 }
 
 // Модель для хранения информации о деплоях сайтов пользователей

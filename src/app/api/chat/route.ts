@@ -138,8 +138,8 @@ export async function POST(req: Request) {
   let activeChatId = chatId;
 
   if (activeChatId) {
-    const chat = await prisma.chat.findUnique({
-      where: { id: activeChatId },
+    const chat = await prisma.chat.findFirst({
+      where: { id: activeChatId, deletedAt: null },
     });
 
     if (chat) {
