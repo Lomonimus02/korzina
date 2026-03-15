@@ -8,6 +8,7 @@ import { YandexMetrika } from "@/components/yandex-metrika";
 import { AnalyticsPageTracker } from "@/components/analytics/page-tracker";
 import { Suspense } from "react";
 import { Footer } from "@/components/footer";
+import Script from "next/script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -156,6 +157,14 @@ export default function RootLayout({
         />
         <JsonLd />
         <YandexMetrika />
+        {/* Telegram Pixel */}
+        <Script
+          id="telegram-pixel"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `(function(t,l,g,r,m){t[g]||(g=t[g]=function(){g.run?g.run.apply(g,arguments):g.queue.push(arguments)},g.queue=[],t=l.createElement(r),t.async=!0,t.src=m,l=l.getElementsByTagName(r)[0],l.parentNode.insertBefore(t,l))})(window,document,'tgp','script','https://telegram.org/js/pixel.js');tgp('init','MQoWqDQG');`,
+          }}
+        />
         <Suspense fallback={null}>
           <AnalyticsPageTracker />
         </Suspense>
