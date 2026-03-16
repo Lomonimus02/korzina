@@ -28,6 +28,7 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl");
   const q = searchParams.get("q");
+  const ref = searchParams.get("ref");
   
   const [step, setStep] = useState<"register" | "verify">("register");
   const [email, setEmail] = useState("");
@@ -73,7 +74,7 @@ function RegisterForm() {
       const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, ref: ref || undefined }),
       });
 
       if (!response.ok) {
