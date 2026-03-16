@@ -7,19 +7,10 @@ const SKIP_EMAIL_VERIFICATION = process.env.SKIP_EMAIL_VERIFICATION === "true";
 
 export async function POST(req: Request) {
   try {
-    const { email, password, ref } = await req.json();
+    const { email, password } = await req.json();
 
     if (!email || !password) {
       return new NextResponse("Введите email и пароль", { status: 400 });
-    }
-
-    // Find referrer if ref code provided
-    let referrer: { id: string } | null = null;
-    if (ref) {
-      referrer = await prisma.user.findUnique({
-        where: { referralCode: ref },
-        select: { id: true },
-      });
     }
 
     // Check if user already exists
@@ -59,30 +50,13 @@ export async function POST(req: Request) {
 
     // DEV MODE: Skip email verification
     if (SKIP_EMAIL_VERIFICATION) {
-      if (referrer) {
-        await prisma.$transaction([
-          prisma.user.create({
-            data: {
-              email,
-              password: hashedPassword,
-              isVerified: true,
-              referredById: referrer.id,
-            },
-          }),
-          prisma.user.update({
-            where: { id: referrer.id },
-            data: { credits: { increment: 10 } },
-          }),
-        ]);
-      } else {
-        await prisma.user.create({
-          data: {
-            email,
-            password: hashedPassword,
-            isVerified: true,
-          },
-        });
-      }
+      await prisma.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          isVerified: true,
+        },
+      });
 
       return NextResponse.json({ 
         success: true, 
@@ -95,30 +69,13 @@ export async function POST(req: Request) {
     const otp = generateOTP();
     const expires = new Date(Date.now() + 15 * 60 * 1000);
 
-    if (referrer) {
-      await prisma.$transaction([
-        prisma.user.create({
-          data: {
-            email,
-            password: hashedPassword,
-            isVerified: false,
-            referredById: referrer.id,
-          },
-        }),
-        prisma.user.update({
-          where: { id: referrer.id },
-          data: { credits: { increment: 10 } },
-        }),
-      ]);
-    } else {
-      await prisma.user.create({
-        data: {
-          email,
-          password: hashedPassword,
-          isVerified: false,
-        },
-      });
-    }
+    await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        isVerified: false,
+      },
+    });
 
     await prisma.verificationToken.create({
       data: { identifier: email, token: otp, expires },

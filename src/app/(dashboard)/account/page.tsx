@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { User, CreditCard, History, ChevronLeft, Users } from "lucide-react";
+import { User, CreditCard, History, ChevronLeft } from "lucide-react";
 import { getAuthSession } from "@/lib/auth";
 import prisma from "@/lib/db";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ReferralCard } from "./referral-card";
+
 
 export default async function AccountPage() {
   const session = await getAuthSession();
@@ -29,9 +29,7 @@ export default async function AccountPage() {
       transactions: {
         orderBy: { createdAt: "desc" },
       },
-      _count: {
-        select: { referrals: true },
-      },
+
     },
   });
 
@@ -131,12 +129,6 @@ export default async function AccountPage() {
               </CardContent>
             </Card>
           </div>
-
-          {/* Referral Program */}
-          <ReferralCard
-            referralCode={user.referralCode}
-            referralCount={user._count.referrals}
-          />
 
           {/* Transaction History */}
           <Card>

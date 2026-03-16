@@ -26,12 +26,6 @@ model User {
   name          String?   // Имя пользователя (для OAuth)
   vercelToken   String?   // Зашифрованный токен Vercel для деплоя
   createdAt     DateTime  @default(now())
-
-  // Реферальная программа
-  referralCode  String    @unique @default(uuid())
-  referredById  String?
-  referredBy    User?     @relation("UserReferrals", fields: [referredById], references: [id])
-  referrals     User[]    @relation("UserReferrals")
   
   // Лимиты для бесплатного плана
   dailyGenerations   Int       @default(0)      // Использовано генераций сегодня
