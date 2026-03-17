@@ -129,14 +129,21 @@ if (root) {
         }
       );
 
-      // Stub loader for missing packages — returns empty ESM module
+      // Stub loader for missing packages — returns CJS module so esbuild
+      // doesn't statically check named exports (any import resolves at runtime)
       build.onLoad({ filter: /.*/, namespace: "stub" }, (args) => {
         console.warn(`[Bundler] Stubbing missing package: ${args.path}`);
         return {
           contents: `
-export default new Proxy({}, { get: (_, k) => typeof k === 'string' ? (() => null) : undefined });
-export const Toaster = () => null;
-export const toast = Object.assign(() => {}, { success: () => {}, error: () => {}, info: () => {} });
+var noop = function() { return null; };
+var handler = {
+  get: function(target, key) {
+    if (key === '__esModule') return true;
+    if (typeof key !== 'string') return undefined;
+    return noop;
+  }
+};
+module.exports = new Proxy(noop, handler);
 `,
           loader: "js",
         };
